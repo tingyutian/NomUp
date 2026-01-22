@@ -6,16 +6,20 @@ import Animated, {
   withSpring,
   WithSpringConfig,
 } from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { BorderRadius, Spacing } from "@/constants/theme";
+import { BorderRadius, Spacing, Colors } from "@/constants/theme";
 
 interface ButtonProps {
   onPress?: () => void;
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   disabled?: boolean;
+  variant?: "primary" | "secondary" | "outline";
+  haptic?: boolean;
+  testID?: string;
 }
 
 const springConfig: WithSpringConfig = {
@@ -23,7 +27,6 @@ const springConfig: WithSpringConfig = {
   mass: 0.3,
   stiffness: 150,
   overshootClamping: true,
-  energyThreshold: 0.001,
 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -33,6 +36,9 @@ export function Button({
   children,
   style,
   disabled = false,
+  variant = "primary",
+  haptic = true,
+  testID,
 }: ButtonProps) {
   const { theme } = useTheme();
   const scale = useSharedValue(1);
@@ -53,16 +59,56 @@ export function Button({
     }
   };
 
+  const handlePress = () => {
+    if (haptic) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    onPress?.();
+  };
+
+  const getBackgroundColor = () => {
+    switch (variant) {
+      case "secondary":
+        return theme.backgroundDefault;
+      case "outline":
+        return "transparent";
+      default:
+        return Colors.light.text;
+    }
+  };
+
+  const getBorderColor = () => {
+    switch (variant) {
+      case "outline":
+        return theme.divider;
+      default:
+        return "transparent";
+    }
+  };
+
+  const getTextColor = () => {
+    switch (variant) {
+      case "secondary":
+      case "outline":
+        return theme.text;
+      default:
+        return "#FFFFFF";
+    }
+  };
+
   return (
     <AnimatedPressable
-      onPress={disabled ? undefined : onPress}
+      testID={testID}
+      onPress={disabled ? undefined : handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       disabled={disabled}
       style={[
         styles.button,
         {
-          backgroundColor: theme.link,
+          backgroundColor: getBackgroundColor(),
+          borderColor: getBorderColor(),
+          borderWidth: variant === "outline" ? 1 : 0,
           opacity: disabled ? 0.5 : 1,
         },
         style,
@@ -70,8 +116,8 @@ export function Button({
       ]}
     >
       <ThemedText
-        type="body"
-        style={[styles.buttonText, { color: theme.buttonText }]}
+        type="bodyMedium"
+        style={[styles.buttonText, { color: getTextColor() }]}
       >
         {children}
       </ThemedText>
@@ -82,9 +128,10 @@ export function Button({
 const styles = StyleSheet.create({
   button: {
     height: Spacing.buttonHeight,
-    borderRadius: BorderRadius.full,
+    borderRadius: BorderRadius.md,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: Spacing.xl,
   },
   buttonText: {
     fontWeight: "600",

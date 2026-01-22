@@ -1,11 +1,11 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import HomeScreen from "@/screens/HomeScreen";
+import DashboardScreen from "@/screens/DashboardScreen";
 import { HeaderTitle } from "@/components/HeaderTitle";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
 export type HomeStackParamList = {
-  Home: undefined;
+  Dashboard: undefined;
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -16,10 +16,10 @@ export default function HomeStackNavigator() {
   return (
     <Stack.Navigator screenOptions={screenOptions}>
       <Stack.Screen
-        name="Home"
-        component={HomeScreen}
+        name="Dashboard"
+        component={DashboardScreen}
         options={{
-          headerTitle: () => <HeaderTitle title="My App" />,
+          headerTitle: () => <HeaderTitle title="NomUp" />,
         }}
       />
     </Stack.Navigator>

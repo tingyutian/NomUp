@@ -1,18 +1,47 @@
 import React from "react";
+import { View, StyleSheet, Pressable } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import { Platform, StyleSheet } from "react-native";
+import { Platform } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import HomeStackNavigator from "@/navigation/HomeStackNavigator";
-import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
+import PantryStackNavigator from "@/navigation/PantryStackNavigator";
+import ShoppingStackNavigator from "@/navigation/ShoppingStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
+import { Colors, Spacing, BorderRadius } from "@/constants/theme";
+import type { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 export type MainTabParamList = {
   HomeTab: undefined;
-  ProfileTab: undefined;
+  PantryTab: undefined;
+  AddTab: undefined;
+  ListTab: undefined;
+  HabitsTab: undefined;
 };
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
+
+function AddButton() {
+  const { theme } = useTheme();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+  return (
+    <View style={styles.addButtonContainer}>
+      <Pressable
+        onPress={() => navigation.navigate("ScanReceipt")}
+        style={[styles.addButton, { backgroundColor: theme.text }]}
+      >
+        <Feather name="plus" size={28} color={theme.buttonText} />
+      </Pressable>
+    </View>
+  );
+}
+
+function EmptyScreen() {
+  return <View />;
+}
 
 export default function MainTabNavigator() {
   const { theme, isDark } = useTheme();
@@ -27,10 +56,11 @@ export default function MainTabNavigator() {
           position: "absolute",
           backgroundColor: Platform.select({
             ios: "transparent",
-            android: theme.backgroundRoot,
+            android: Colors.light.backgroundRoot,
           }),
           borderTopWidth: 0,
           elevation: 0,
+          height: 80,
         },
         tabBarBackground: () =>
           Platform.OS === "ios" ? (
@@ -41,28 +71,104 @@ export default function MainTabNavigator() {
             />
           ) : null,
         headerShown: false,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: "500",
+        },
       }}
     >
       <Tab.Screen
         name="HomeTab"
         component={HomeStackNavigator}
         options={{
-          title: "Home",
+          title: "HOME",
           tabBarIcon: ({ color, size }) => (
             <Feather name="home" size={size} color={color} />
           ),
         }}
       />
       <Tab.Screen
-        name="ProfileTab"
-        component={ProfileStackNavigator}
+        name="PantryTab"
+        component={PantryStackNavigator}
         options={{
-          title: "Profile",
+          title: "PANTRY",
           tabBarIcon: ({ color, size }) => (
-            <Feather name="user" size={size} color={color} />
+            <Feather name="box" size={size} color={color} />
           ),
         }}
+      />
+      <Tab.Screen
+        name="AddTab"
+        component={EmptyScreen}
+        options={{
+          title: "",
+          tabBarIcon: () => <AddButton />,
+          tabBarButton: (props) => (
+            <Pressable
+              {...props}
+              style={styles.addTabButton}
+            />
+          ),
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate("ScanReceipt");
+          },
+        })}
+      />
+      <Tab.Screen
+        name="ListTab"
+        component={ShoppingStackNavigator}
+        options={{
+          title: "LIST",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="list" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="HabitsTab"
+        component={EmptyScreen}
+        options={{
+          title: "HABITS",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="activity" size={size} color={color} />
+          ),
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate("Consumption");
+          },
+        })}
       />
     </Tab.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  addButtonContainer: {
+    position: "absolute",
+    top: -20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  addButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  addTabButton: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

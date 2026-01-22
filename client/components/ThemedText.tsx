@@ -1,4 +1,4 @@
-import { Text, type TextProps } from "react-native";
+import { Text, type TextProps, Platform } from "react-native";
 
 import { useTheme } from "@/hooks/useTheme";
 import { Typography } from "@/constants/theme";
@@ -6,7 +6,7 @@ import { Typography } from "@/constants/theme";
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
   darkColor?: string;
-  type?: "h1" | "h2" | "h3" | "h4" | "body" | "small" | "link";
+  type?: "heroTitle" | "h1" | "h2" | "h3" | "h4" | "body" | "bodyMedium" | "small" | "caption" | "link";
 };
 
 export function ThemedText({
@@ -36,18 +36,52 @@ export function ThemedText({
 
   const getTypeStyle = () => {
     switch (type) {
+      case "heroTitle":
+        return {
+          ...Typography.heroTitle,
+          fontFamily: Platform.select({
+            ios: "ui-serif",
+            android: "serif",
+            default: "Georgia, serif",
+          }),
+        };
       case "h1":
-        return Typography.h1;
+        return {
+          ...Typography.h1,
+          fontFamily: Platform.select({
+            ios: "ui-serif",
+            android: "serif",
+            default: "Georgia, serif",
+          }),
+        };
       case "h2":
-        return Typography.h2;
+        return {
+          ...Typography.h2,
+          fontFamily: Platform.select({
+            ios: "ui-serif",
+            android: "serif",
+            default: "Georgia, serif",
+          }),
+        };
       case "h3":
-        return Typography.h3;
+        return {
+          ...Typography.h3,
+          fontFamily: Platform.select({
+            ios: "ui-serif",
+            android: "serif",
+            default: "Georgia, serif",
+          }),
+        };
       case "h4":
         return Typography.h4;
       case "body":
         return Typography.body;
+      case "bodyMedium":
+        return Typography.bodyMedium;
       case "small":
         return Typography.small;
+      case "caption":
+        return Typography.caption;
       case "link":
         return Typography.link;
       default:
