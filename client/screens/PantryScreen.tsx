@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useCallback } from "react";
-import { View, StyleSheet, FlatList, Pressable, TextInput, ScrollView } from "react-native";
+import React, { useState, useMemo, useCallback, useRef } from "react";
+import { View, StyleSheet, FlatList, Pressable, TextInput, ScrollView, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -273,47 +273,23 @@ export default function PantryScreen({ navigation }: Props) {
           </Pressable>
         ))}
         
-        <View style={styles.sortDropdownContainer}>
-          <Pressable
-            onPress={() => setShowSortDropdown(!showSortDropdown)}
-            style={styles.sortButton}
-            testID="button-sort"
-          >
-            <ThemedText type="small" style={{ color: theme.textSecondary }}>
-              Sort by: {sortOptions.find(o => o.key === sortBy)?.label}
-            </ThemedText>
-            <Feather 
-              name={showSortDropdown ? "chevron-up" : "chevron-down"} 
-              size={16} 
-              color={theme.textSecondary} 
-            />
-          </Pressable>
-          
-          {showSortDropdown ? (
-            <View style={[styles.sortDropdown, { backgroundColor: theme.backgroundDefault }]}>
-              {sortOptions.map((option) => (
-                <Pressable
-                  key={option.key}
-                  onPress={() => {
-                    setSortBy(option.key);
-                    setShowSortDropdown(false);
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  }}
-                  style={[
-                    styles.sortOption,
-                    sortBy === option.key ? { backgroundColor: theme.backgroundSecondary } : undefined,
-                  ]}
-                  testID={`sort-option-${option.key}`}
-                >
-                  <ThemedText type="body">{option.label}</ThemedText>
-                  {sortBy === option.key ? (
-                    <Feather name="check" size={16} color={theme.text} />
-                  ) : null}
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
-        </View>
+        <Pressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setShowSortDropdown(true);
+          }}
+          style={styles.sortButton}
+          testID="button-sort"
+        >
+          <ThemedText type="small" style={{ color: theme.textSecondary }}>
+            Sort by: {sortOptions.find(o => o.key === sortBy)?.label}
+          </ThemedText>
+          <Feather 
+            name="chevron-down" 
+            size={16} 
+            color={theme.textSecondary} 
+          />
+        </Pressable>
       </Animated.View>
     </>
   );
@@ -381,6 +357,42 @@ export default function PantryScreen({ navigation }: Props) {
         onConfirm={handleConfirmDelete}
         itemName={itemToDelete?.name || ""}
       />
+
+      <Modal
+        visible={showSortDropdown}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSortDropdown(false)}
+      >
+        <Pressable 
+          style={styles.sortModalOverlay} 
+          onPress={() => setShowSortDropdown(false)}
+        >
+          <View style={[styles.sortModalContent, { backgroundColor: theme.backgroundDefault }]}>
+            <ThemedText type="h4" style={styles.sortModalTitle}>Sort By</ThemedText>
+            {sortOptions.map((option) => (
+              <Pressable
+                key={option.key}
+                onPress={() => {
+                  setSortBy(option.key);
+                  setShowSortDropdown(false);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
+                style={[
+                  styles.sortOption,
+                  sortBy === option.key ? { backgroundColor: theme.backgroundSecondary } : undefined,
+                ]}
+                testID={`sort-option-${option.key}`}
+              >
+                <ThemedText type="body">{option.label}</ThemedText>
+                {sortBy === option.key ? (
+                  <Feather name="check" size={16} color={theme.text} />
+                ) : null}
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -430,37 +442,42 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     marginRight: Spacing.xl,
   },
-  sortDropdownContainer: {
-    marginLeft: "auto",
-    position: "relative",
-    zIndex: 9999,
-  },
   sortButton: {
+    marginLeft: "auto",
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: Spacing.md,
     gap: Spacing.xs,
   },
-  sortDropdown: {
-    position: "absolute",
-    top: "100%",
-    right: 0,
-    borderRadius: BorderRadius.md,
-    overflow: "hidden",
-    minWidth: 140,
-    zIndex: 9999,
-    elevation: 999,
+  sortModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: Spacing.xl,
+  },
+  sortModalContent: {
+    width: "100%",
+    maxWidth: 300,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  sortModalTitle: {
+    textAlign: "center",
+    marginBottom: Spacing.md,
   },
   sortOption: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: Spacing.md,
+    paddingVertical: Spacing.lg,
     paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.md,
   },
   emptyState: {
     alignItems: "center",
