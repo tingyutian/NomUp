@@ -338,7 +338,7 @@ export default function PantryScreen({ navigation }: Props) {
         ListHeaderComponent={renderHeader}
         ListEmptyComponent={renderEmptyState}
         renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInDown.delay(100 + index * 30)}>
+          <Animated.View entering={FadeInDown.delay(100 + index * 30)} style={{ zIndex: 1 }}>
             <SwipeableGroceryItem
               item={item}
               onPress={() => handleItemPress(item)}
@@ -433,6 +433,7 @@ const styles = StyleSheet.create({
   sortDropdownContainer: {
     marginLeft: "auto",
     position: "relative",
+    zIndex: 9999,
   },
   sortButton: {
     flexDirection: "row",
