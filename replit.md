@@ -29,7 +29,7 @@ Preferred communication style: Simple, everyday language.
 **Directory Structure**:
 - `client/screens/` - Screen components (PantryScreen is the main screen, ShoppingListScreen, ConsumptionScreen, etc.)
 - `client/components/` - Reusable components organized by atomic design (atoms, molecules, organisms)
-- `client/navigation/` - Navigation stack definitions (MainTabNavigator has Pantry, Add, List, Habits tabs)
+- `client/navigation/` - Navigation stack definitions (MainTabNavigator has Pantry, Add, List tabs)
 - `client/context/` - React Context providers (AppContext for groceries and shopping list state)
 - `client/hooks/` - Custom hooks for theming, screen options
 

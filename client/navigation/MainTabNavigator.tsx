@@ -16,7 +16,6 @@ export type MainTabParamList = {
   PantryTab: undefined;
   AddTab: undefined;
   ListTab: undefined;
-  HabitsTab: undefined;
 };
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -114,22 +113,6 @@ export default function MainTabNavigator() {
             <Feather name="list" size={size} color={color} />
           ),
         }}
-      />
-      <Tab.Screen
-        name="HabitsTab"
-        component={EmptyScreen}
-        options={{
-          title: "HABITS",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="activity" size={size} color={color} />
-          ),
-        }}
-        listeners={({ navigation }) => ({
-          tabPress: (e) => {
-            e.preventDefault();
-            navigation.navigate("Consumption");
-          },
-        })}
       />
     </Tab.Navigator>
   );

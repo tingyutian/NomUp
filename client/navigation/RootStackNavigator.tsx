@@ -4,7 +4,6 @@ import MainTabNavigator from "@/navigation/MainTabNavigator";
 import WelcomeScreen from "@/screens/WelcomeScreen";
 import ScanReceiptScreen from "@/screens/ScanReceiptScreen";
 import ConfirmItemsScreen from "@/screens/ConfirmItemsScreen";
-import ConsumptionScreen from "@/screens/ConsumptionScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { useApp } from "@/context/AppContext";
 import { Colors } from "@/constants/theme";
@@ -14,7 +13,6 @@ export type RootStackParamList = {
   Main: undefined;
   ScanReceipt: undefined;
   ConfirmItems: { imageBase64: string };
-  Consumption: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -56,14 +54,6 @@ export default function RootStackNavigator() {
       <Stack.Screen
         name="ConfirmItems"
         component={ConfirmItemsScreen}
-        options={{
-          headerTitle: "",
-          headerBackTitle: "Back",
-        }}
-      />
-      <Stack.Screen
-        name="Consumption"
-        component={ConsumptionScreen}
         options={{
           headerTitle: "",
           headerBackTitle: "Back",
