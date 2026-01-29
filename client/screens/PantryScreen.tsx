@@ -424,6 +424,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.light.divider,
     marginBottom: Spacing.lg,
+    zIndex: 1000,
   },
   tab: {
     paddingVertical: Spacing.md,
@@ -446,8 +447,8 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     overflow: "hidden",
     minWidth: 140,
-    zIndex: 100,
-    elevation: 5,
+    zIndex: 9999,
+    elevation: 999,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,

@@ -160,6 +160,19 @@ export function SwipeableGroceryItem({
               </View>
               <Feather name="chevron-right" size={18} color={theme.textSecondary} />
             </View>
+            <View style={styles.usageDots}>
+              {Array.from({ length: 10 }).map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.usageDot,
+                    {
+                      backgroundColor: i < item.usedAmount ? theme.text : theme.divider,
+                    },
+                  ]}
+                />
+              ))}
+            </View>
             <View style={styles.bottomRow}>
               <ThemedText type="small" style={{ color: theme.textSecondary }}>
                 {item.quantity} {item.unit}
@@ -244,5 +257,16 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "600",
     color: "#1A1A1A",
+  },
+  usageDots: {
+    flexDirection: "row",
+    gap: 4,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
+  usageDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
 });

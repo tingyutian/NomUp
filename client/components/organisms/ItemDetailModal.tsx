@@ -49,7 +49,9 @@ export function ItemDetailModal({
   const insets = useSafeAreaInsets();
   
   const [viewMode, setViewMode] = useState<ViewMode>("detail");
-  const [consumptionAmount, setConsumptionAmount] = useState(3);
+  const [consumptionAmount, setConsumptionAmount] = useState(1);
+  const [showDestructiveConfirm, setShowDestructiveConfirm] = useState(false);
+  const [destructiveAction, setDestructiveAction] = useState<"usedAll" | "threwAway" | null>(null);
   
   const [editName, setEditName] = useState("");
   const [editCategory, setEditCategory] = useState("");
@@ -59,11 +61,13 @@ export function ItemDetailModal({
   useEffect(() => {
     if (visible && item) {
       setViewMode("detail");
-      setConsumptionAmount(3);
+      setConsumptionAmount(1);
       setEditName(item.name);
       setEditCategory(item.category);
       setEditExpiresIn(item.expiresIn);
       setEditQuantity(item.quantity);
+      setShowDestructiveConfirm(false);
+      setDestructiveAction(null);
     }
   }, [visible, item]);
 
@@ -76,15 +80,31 @@ export function ItemDetailModal({
   };
 
   const handleUsedAll = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    onUsedAll(item.id);
-    onClose();
+    setDestructiveAction("usedAll");
+    setShowDestructiveConfirm(true);
   };
 
   const handleThrewAway = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    onThrewAway(item.id);
+    setDestructiveAction("threwAway");
+    setShowDestructiveConfirm(true);
+  };
+
+  const confirmDestructiveAction = () => {
+    if (destructiveAction === "usedAll") {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      onUsedAll(item.id);
+    } else if (destructiveAction === "threwAway") {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      onThrewAway(item.id);
+    }
+    setShowDestructiveConfirm(false);
+    setDestructiveAction(null);
     onClose();
+  };
+
+  const cancelDestructiveAction = () => {
+    setShowDestructiveConfirm(false);
+    setDestructiveAction(null);
   };
 
   const handleSaveEdit = () => {
@@ -342,6 +362,43 @@ export function ItemDetailModal({
           {viewMode === "detail" ? renderDetailView() : renderEditView()}
         </View>
       </KeyboardAvoidingView>
+
+      {showDestructiveConfirm ? (
+        <View style={styles.confirmOverlay}>
+          <View style={[styles.confirmModal, { backgroundColor: theme.backgroundDefault }]}>
+            <ThemedText type="h3" style={styles.confirmTitle}>
+              {destructiveAction === "threwAway" ? "Throw Away Item?" : "Mark as Fully Used?"}
+            </ThemedText>
+            <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center" }}>
+              {destructiveAction === "threwAway"
+                ? `Are you sure you want to throw away "${item.name}"? This will remove it from your pantry.`
+                : `Are you sure you want to mark "${item.name}" as fully used? This will remove it from your pantry.`}
+            </ThemedText>
+            <View style={styles.confirmActions}>
+              <Pressable
+                onPress={cancelDestructiveAction}
+                style={[styles.confirmButton, { borderColor: theme.divider }]}
+              >
+                <ThemedText type="bodyMedium">Cancel</ThemedText>
+              </Pressable>
+              <Pressable
+                onPress={confirmDestructiveAction}
+                style={[
+                  styles.confirmButton, 
+                  { 
+                    backgroundColor: destructiveAction === "threwAway" ? "#E53935" : theme.text,
+                    borderColor: destructiveAction === "threwAway" ? "#E53935" : theme.text,
+                  }
+                ]}
+              >
+                <ThemedText type="bodyMedium" style={{ color: "#FFF" }}>
+                  {destructiveAction === "threwAway" ? "Throw Away" : "Confirm"}
+                </ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      ) : null}
     </Modal>
   );
 }
@@ -493,5 +550,35 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     flex: 1,
+  },
+  confirmOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: Spacing.xl,
+  },
+  confirmModal: {
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    width: "100%",
+    maxWidth: 320,
+  },
+  confirmTitle: {
+    textAlign: "center",
+    marginBottom: Spacing.md,
+  },
+  confirmActions: {
+    flexDirection: "row",
+    gap: Spacing.md,
+    marginTop: Spacing.xl,
+  },
+  confirmButton: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
   },
 });

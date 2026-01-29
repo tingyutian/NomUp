@@ -195,7 +195,7 @@ export default function ShoppingListScreen({ navigation }: Props) {
             styles.footer,
             {
               backgroundColor: theme.backgroundDefault,
-              paddingBottom: insets.bottom + Spacing.lg,
+              paddingBottom: insets.bottom + tabBarHeight + Spacing.lg,
             },
           ]}
         >

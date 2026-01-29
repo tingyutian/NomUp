@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
+import { View, StyleSheet, ScrollView, ActivityIndicator, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useHeaderHeight } from "@react-navigation/elements";
+import { Feather } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
@@ -30,7 +30,6 @@ interface ScannedItemData {
 export default function ConfirmItemsScreen({ route, navigation }: Props) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
   const { addGroceries } = useApp();
   const { imageBase64 } = route.params;
 
@@ -135,7 +134,7 @@ export default function ConfirmItemsScreen({ route, navigation }: Props) {
 
   if (isLoading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.backgroundRoot, paddingTop: headerHeight }]}>
+      <View style={[styles.loadingContainer, { backgroundColor: theme.backgroundRoot, paddingTop: insets.top + 60 }]}>
         <ActivityIndicator size="large" color={theme.text} />
         <ThemedText type="body" style={styles.loadingText}>
           Scanning your receipt...
@@ -146,10 +145,17 @@ export default function ConfirmItemsScreen({ route, navigation }: Props) {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
+      <View style={[styles.topHeader, { paddingTop: insets.top }]}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Feather name="chevron-left" size={28} color={theme.text} />
+        </Pressable>
+        <ThemedText type="bodyMedium">Confirm Items</ThemedText>
+        <View style={{ width: 44 }} />
+      </View>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={{
-          paddingTop: headerHeight + Spacing.lg,
+          paddingTop: Spacing.lg,
           paddingBottom: Spacing["6xl"] + 100,
           paddingHorizontal: Spacing.lg,
         }}
@@ -228,6 +234,21 @@ export default function ConfirmItemsScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  topHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.divider,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   loadingContainer: {
     flex: 1,

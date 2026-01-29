@@ -48,15 +48,13 @@ export default function RootStackNavigator() {
         component={ScanReceiptScreen}
         options={{ 
           headerShown: false,
-          presentation: "fullScreenModal",
         }}
       />
       <Stack.Screen
         name="ConfirmItems"
         component={ConfirmItemsScreen}
         options={{
-          headerTitle: "",
-          headerBackTitle: "Back",
+          headerShown: false,
         }}
       />
     </Stack.Navigator>
