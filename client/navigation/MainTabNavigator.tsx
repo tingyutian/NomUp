@@ -6,7 +6,6 @@ import { BlurView } from "expo-blur";
 import { Platform } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import HomeStackNavigator from "@/navigation/HomeStackNavigator";
 import PantryStackNavigator from "@/navigation/PantryStackNavigator";
 import ShoppingStackNavigator from "@/navigation/ShoppingStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
@@ -14,7 +13,6 @@ import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import type { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 export type MainTabParamList = {
-  HomeTab: undefined;
   PantryTab: undefined;
   AddTab: undefined;
   ListTab: undefined;
@@ -48,7 +46,7 @@ export default function MainTabNavigator() {
 
   return (
     <Tab.Navigator
-      initialRouteName="HomeTab"
+      initialRouteName="PantryTab"
       screenOptions={{
         tabBarActiveTintColor: theme.tabIconSelected,
         tabBarInactiveTintColor: theme.tabIconDefault,
@@ -77,16 +75,6 @@ export default function MainTabNavigator() {
         },
       }}
     >
-      <Tab.Screen
-        name="HomeTab"
-        component={HomeStackNavigator}
-        options={{
-          title: "HOME",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="home" size={size} color={color} />
-          ),
-        }}
-      />
       <Tab.Screen
         name="PantryTab"
         component={PantryStackNavigator}

@@ -1,0 +1,497 @@
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  StyleSheet,
+  Modal,
+  TextInput,
+  Pressable,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { ThemedText } from "@/components/ThemedText";
+import { Button } from "@/components/Button";
+import { Slider } from "@/components/atoms/Slider";
+import { Badge } from "@/components/atoms/Badge";
+import { useTheme } from "@/hooks/useTheme";
+import { BorderRadius, Spacing, Colors } from "@/constants/theme";
+import { GroceryItem } from "@/context/AppContext";
+
+interface ItemDetailModalProps {
+  visible: boolean;
+  onClose: () => void;
+  item: GroceryItem | null;
+  onLogConsumption: (id: string, amount: number) => void;
+  onUsedAll: (id: string) => void;
+  onThrewAway: (id: string) => void;
+  onEdit: (id: string, data: { name: string; category: string; expiresIn: number; quantity: number }) => void;
+  onAddToShoppingList: (item: GroceryItem) => void;
+}
+
+type ViewMode = "detail" | "edit";
+
+const categories = ["produce", "dairy", "bakery", "meat", "pantry", "frozen"];
+
+export function ItemDetailModal({
+  visible,
+  onClose,
+  item,
+  onLogConsumption,
+  onUsedAll,
+  onThrewAway,
+  onEdit,
+  onAddToShoppingList,
+}: ItemDetailModalProps) {
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  
+  const [viewMode, setViewMode] = useState<ViewMode>("detail");
+  const [consumptionAmount, setConsumptionAmount] = useState(3);
+  
+  const [editName, setEditName] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editExpiresIn, setEditExpiresIn] = useState(7);
+  const [editQuantity, setEditQuantity] = useState(1);
+
+  useEffect(() => {
+    if (visible && item) {
+      setViewMode("detail");
+      setConsumptionAmount(3);
+      setEditName(item.name);
+      setEditCategory(item.category);
+      setEditExpiresIn(item.expiresIn);
+      setEditQuantity(item.quantity);
+    }
+  }, [visible, item]);
+
+  if (!item) return null;
+
+  const handleLogConsumption = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    onLogConsumption(item.id, consumptionAmount);
+    onClose();
+  };
+
+  const handleUsedAll = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    onUsedAll(item.id);
+    onClose();
+  };
+
+  const handleThrewAway = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    onThrewAway(item.id);
+    onClose();
+  };
+
+  const handleSaveEdit = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onEdit(item.id, {
+      name: editName,
+      category: editCategory,
+      expiresIn: editExpiresIn,
+      quantity: editQuantity,
+    });
+    setViewMode("detail");
+  };
+
+  const handleAddToShoppingList = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onAddToShoppingList(item);
+    onClose();
+  };
+
+  const getExpirationColor = () => {
+    if (item.expiresIn <= 0) return theme.expiredRed;
+    if (item.expiresIn <= 2) return theme.expiringOrange;
+    if (item.expiresIn <= 5) return theme.expiringYellow;
+    return theme.backgroundSecondary;
+  };
+
+  const getExpirationText = () => {
+    if (item.expiresIn < 0) return `Expired ${Math.abs(item.expiresIn)}d ago`;
+    if (item.expiresIn === 0) return "Expires today";
+    if (item.expiresIn === 1) return "Expires tomorrow";
+    return `Expires in ${item.expiresIn} days`;
+  };
+
+  const renderDetailView = () => (
+    <>
+      <View style={styles.itemInfo}>
+        <ThemedText type="h2">{item.name}</ThemedText>
+        <View style={styles.itemMeta}>
+          <Badge label={item.category} variant="category" category={item.category} />
+          <View style={[styles.expirationBadge, { backgroundColor: getExpirationColor() }]}>
+            <ThemedText type="caption" style={styles.expirationText}>
+              {getExpirationText()}
+            </ThemedText>
+          </View>
+        </View>
+        <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>
+          {item.quantity} {item.unit} in {item.storageLocation}
+        </ThemedText>
+      </View>
+
+      <View style={[styles.section, { borderColor: theme.divider }]}>
+        <ThemedText type="h4" style={styles.sectionTitle}>
+          Log Consumption
+        </ThemedText>
+        <Slider
+          value={consumptionAmount}
+          onValueChange={setConsumptionAmount}
+          min={1}
+          max={10}
+          step={1}
+          showLabel
+        />
+        <View style={styles.consumptionActions}>
+          <Pressable
+            onPress={handleThrewAway}
+            style={[styles.actionButton, { borderColor: theme.divider }]}
+          >
+            <Feather name="trash-2" size={16} color={theme.text} />
+            <ThemedText type="small" style={{ marginLeft: Spacing.xs }}>
+              THREW AWAY
+            </ThemedText>
+          </Pressable>
+          <Pressable
+            onPress={handleUsedAll}
+            style={[styles.actionButton, { borderColor: theme.divider }]}
+          >
+            <Feather name="check-circle" size={16} color={theme.text} />
+            <ThemedText type="small" style={{ marginLeft: Spacing.xs }}>
+              USED ALL
+            </ThemedText>
+          </Pressable>
+        </View>
+        <Button onPress={handleLogConsumption} style={styles.logButton}>
+          LOG {consumptionAmount} USED
+        </Button>
+      </View>
+
+      <View style={styles.bottomActions}>
+        <Pressable
+          onPress={() => setViewMode("edit")}
+          style={[styles.bottomButton, { backgroundColor: theme.backgroundDefault }]}
+          testID="button-edit-item"
+        >
+          <Feather name="edit-2" size={18} color={theme.text} />
+          <ThemedText type="bodyMedium" style={{ marginLeft: Spacing.sm }}>
+            Edit Item
+          </ThemedText>
+        </Pressable>
+        <Pressable
+          onPress={handleAddToShoppingList}
+          style={[styles.bottomButton, { backgroundColor: theme.text }]}
+          testID="button-add-to-list"
+        >
+          <Feather name="shopping-cart" size={18} color={theme.buttonText} />
+          <ThemedText type="bodyMedium" style={{ marginLeft: Spacing.sm, color: theme.buttonText }}>
+            Add to List
+          </ThemedText>
+        </Pressable>
+      </View>
+    </>
+  );
+
+  const renderEditView = () => (
+    <ScrollView showsVerticalScrollIndicator={false}>
+      <View style={styles.field}>
+        <ThemedText type="small" style={[styles.label, { color: theme.textSecondary }]}>
+          Product Name
+        </ThemedText>
+        <TextInput
+          value={editName}
+          onChangeText={setEditName}
+          style={[
+            styles.input,
+            {
+              backgroundColor: theme.backgroundDefault,
+              color: theme.text,
+              borderColor: theme.divider,
+            },
+          ]}
+          placeholderTextColor={theme.textSecondary}
+          placeholder="Enter product name"
+          testID="input-name"
+        />
+      </View>
+
+      <View style={styles.field}>
+        <ThemedText type="small" style={[styles.label, { color: theme.textSecondary }]}>
+          Category
+        </ThemedText>
+        <View style={styles.categoryOptions}>
+          {categories.map((cat) => (
+            <Pressable
+              key={cat}
+              onPress={() => setEditCategory(cat)}
+              style={[
+                styles.categoryOption,
+                {
+                  backgroundColor: editCategory === cat ? theme.text : theme.backgroundDefault,
+                  borderColor: theme.divider,
+                },
+              ]}
+            >
+              <ThemedText
+                type="small"
+                style={{ color: editCategory === cat ? theme.buttonText : theme.text }}
+              >
+                {cat.charAt(0).toUpperCase() + cat.slice(1)}
+              </ThemedText>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.field}>
+        <ThemedText type="small" style={[styles.label, { color: theme.textSecondary }]}>
+          Quantity
+        </ThemedText>
+        <View style={styles.quantityControls}>
+          <Pressable
+            onPress={() => setEditQuantity(Math.max(1, editQuantity - 1))}
+            style={[styles.quantityButton, { borderColor: theme.divider }]}
+          >
+            <Feather name="minus" size={20} color={theme.text} />
+          </Pressable>
+          <ThemedText type="h4" style={styles.quantityText}>
+            {editQuantity}
+          </ThemedText>
+          <Pressable
+            onPress={() => setEditQuantity(editQuantity + 1)}
+            style={[styles.quantityButton, { borderColor: theme.divider }]}
+          >
+            <Feather name="plus" size={20} color={theme.text} />
+          </Pressable>
+        </View>
+      </View>
+
+      <View style={styles.field}>
+        <ThemedText type="small" style={[styles.label, { color: theme.textSecondary }]}>
+          Expires In (days)
+        </ThemedText>
+        <View style={styles.quantityControls}>
+          <Pressable
+            onPress={() => setEditExpiresIn(Math.max(0, editExpiresIn - 1))}
+            style={[styles.quantityButton, { borderColor: theme.divider }]}
+          >
+            <Feather name="minus" size={20} color={theme.text} />
+          </Pressable>
+          <ThemedText type="h4" style={styles.quantityText}>
+            {editExpiresIn}d
+          </ThemedText>
+          <Pressable
+            onPress={() => setEditExpiresIn(editExpiresIn + 1)}
+            style={[styles.quantityButton, { borderColor: theme.divider }]}
+          >
+            <Feather name="plus" size={20} color={theme.text} />
+          </Pressable>
+        </View>
+      </View>
+
+      <View style={styles.editActions}>
+        <Pressable
+          onPress={() => setViewMode("detail")}
+          style={[styles.cancelButton, { borderColor: theme.divider }]}
+        >
+          <ThemedText type="bodyMedium">Cancel</ThemedText>
+        </Pressable>
+        <Button onPress={handleSaveEdit} style={styles.saveButton}>
+          Save Changes
+        </Button>
+      </View>
+    </ScrollView>
+  );
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      onRequestClose={onClose}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.overlay}
+      >
+        <Pressable style={styles.backdrop} onPress={onClose} />
+        <View
+          style={[
+            styles.content,
+            {
+              backgroundColor: theme.backgroundRoot,
+              paddingBottom: insets.bottom + Spacing.xl,
+            },
+          ]}
+        >
+          <View style={styles.handle} />
+          <View style={styles.header}>
+            <ThemedText type="h3">
+              {viewMode === "detail" ? "Item Details" : "Edit Item"}
+            </ThemedText>
+            <Pressable onPress={onClose} style={styles.closeButton} testID="button-close-modal">
+              <Feather name="x" size={24} color={theme.text} />
+            </Pressable>
+          </View>
+
+          {viewMode === "detail" ? renderDetailView() : renderEditView()}
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  content: {
+    borderTopLeftRadius: BorderRadius["2xl"],
+    borderTopRightRadius: BorderRadius["2xl"],
+    padding: Spacing.xl,
+    maxHeight: "85%",
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    backgroundColor: "#D1D1D1",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: Spacing.lg,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.xl,
+  },
+  closeButton: {
+    padding: Spacing.xs,
+  },
+  itemInfo: {
+    marginBottom: Spacing.xl,
+  },
+  itemMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: Spacing.md,
+    gap: Spacing.sm,
+  },
+  expirationBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.xs,
+  },
+  expirationText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#1A1A1A",
+  },
+  section: {
+    borderTopWidth: 1,
+    paddingTop: Spacing.xl,
+    marginBottom: Spacing.xl,
+  },
+  sectionTitle: {
+    marginBottom: Spacing.lg,
+  },
+  consumptionActions: {
+    flexDirection: "row",
+    gap: Spacing.md,
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.lg,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+  },
+  logButton: {
+    backgroundColor: Colors.light.text,
+  },
+  bottomActions: {
+    flexDirection: "row",
+    gap: Spacing.md,
+  },
+  bottomButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+  },
+  field: {
+    marginBottom: Spacing.xl,
+  },
+  label: {
+    marginBottom: Spacing.sm,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  input: {
+    height: 48,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.lg,
+    fontSize: 16,
+  },
+  categoryOptions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
+  },
+  categoryOption: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+  },
+  quantityControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quantityButton: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quantityText: {
+    minWidth: 80,
+    textAlign: "center",
+  },
+  editActions: {
+    flexDirection: "row",
+    gap: Spacing.md,
+    marginTop: Spacing.md,
+  },
+  cancelButton: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.lg,
+    borderWidth: 1,
+    borderRadius: BorderRadius.lg,
+  },
+  saveButton: {
+    flex: 1,
+  },
+});
