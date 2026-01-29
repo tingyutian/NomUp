@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef } from "react";
+import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { View, StyleSheet, FlatList, Pressable, TextInput, ScrollView, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -14,6 +14,7 @@ import { DeleteConfirmModal } from "@/components/organisms/DeleteConfirmModal";
 import { AddItemModal } from "@/components/organisms/AddItemModal";
 import { ConfirmationBanner } from "@/components/atoms/ConfirmationBanner";
 import { IconButton } from "@/components/atoms/IconButton";
+import { SearchBar } from "@/components/atoms/SearchBar";
 import { useTheme } from "@/hooks/useTheme";
 import { useApp, GroceryItem } from "@/context/AppContext";
 import { BorderRadius, Spacing, Colors } from "@/constants/theme";
@@ -236,24 +237,11 @@ export default function PantryScreen({ navigation }: Props) {
         </Animated.View>
       ) : null}
 
-      <Animated.View entering={shouldAnimate ? FadeInDown.delay(200) : undefined} style={styles.searchContainer}>
-        <Feather name="search" size={20} color={theme.textSecondary} />
-        <TextInput
+      <Animated.View entering={shouldAnimate ? FadeInDown.delay(200) : undefined}>
+        <SearchBar
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholder="Search items..."
-          placeholderTextColor={theme.textSecondary}
-          style={[styles.searchInput, { color: theme.text }]}
-          testID="input-search"
-        />
-        <IconButton
-          name="plus"
-          size={20}
-          onPress={() => setShowAddModal(true)}
-          backgroundColor={theme.text}
-          color={theme.buttonText}
-          style={styles.addButton}
-          testID="button-add-item"
+          onAddPress={() => setShowAddModal(true)}
         />
       </Animated.View>
 
@@ -334,6 +322,7 @@ export default function PantryScreen({ navigation }: Props) {
         )}
         showsVerticalScrollIndicator={false}
         scrollIndicatorInsets={{ bottom: insets.bottom }}
+        keyboardShouldPersistTaps="handled"
       />
 
       <AddItemModal
@@ -419,25 +408,6 @@ const styles = StyleSheet.create({
   expiringList: {
     paddingBottom: Spacing.xl,
     gap: Spacing.md,
-  },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: Colors.light.backgroundDefault,
-    borderRadius: BorderRadius.lg,
-    paddingLeft: Spacing.lg,
-    marginBottom: Spacing.lg,
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: Spacing.md,
-    paddingVertical: Spacing.md,
-    fontSize: 16,
-  },
-  addButton: {
-    width: 40,
-    height: 40,
-    margin: Spacing.xs,
   },
   tabsContainer: {
     flexDirection: "row",
