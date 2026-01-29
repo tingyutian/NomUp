@@ -54,6 +54,8 @@ export default function PantryScreen({ navigation }: Props) {
   
   const [showBanner, setShowBanner] = useState(false);
   const [bannerMessage, setBannerMessage] = useState("");
+  
+  const hasAnimatedRef = useRef(false);
 
   const expiringItems = useMemo(() => {
     return groceries
@@ -199,10 +201,16 @@ export default function PantryScreen({ navigation }: Props) {
     </Animated.View>
   );
 
-  const renderHeader = () => (
+  const renderHeader = () => {
+    const shouldAnimate = !hasAnimatedRef.current;
+    if (!hasAnimatedRef.current) {
+      hasAnimatedRef.current = true;
+    }
+    
+    return (
     <>
       {expiringItems.length > 0 ? (
-        <Animated.View entering={FadeInDown.delay(100)}>
+        <Animated.View entering={shouldAnimate ? FadeInDown.delay(100) : undefined}>
           <View style={styles.sectionHeader}>
             <ThemedText type="h2" style={styles.sectionTitle}>
               Expiring Soon
@@ -228,7 +236,7 @@ export default function PantryScreen({ navigation }: Props) {
         </Animated.View>
       ) : null}
 
-      <Animated.View entering={FadeInDown.delay(200)} style={styles.searchContainer}>
+      <Animated.View entering={shouldAnimate ? FadeInDown.delay(200) : undefined} style={styles.searchContainer}>
         <Feather name="search" size={20} color={theme.textSecondary} />
         <TextInput
           value={searchQuery}
@@ -249,7 +257,7 @@ export default function PantryScreen({ navigation }: Props) {
         />
       </Animated.View>
 
-      <Animated.View entering={FadeInDown.delay(300)} style={styles.tabsContainer}>
+      <Animated.View entering={shouldAnimate ? FadeInDown.delay(300) : undefined} style={styles.tabsContainer}>
         {tabs.map((tab) => (
           <Pressable
             key={tab.key}
@@ -293,6 +301,7 @@ export default function PantryScreen({ navigation }: Props) {
       </Animated.View>
     </>
   );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
