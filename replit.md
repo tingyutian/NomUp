@@ -6,10 +6,12 @@ NomUp is a mobile-first grocery management app that helps users prevent food was
 
 Core features:
 - **Receipt Scanning**: AI-powered grocery receipt analysis using Gemini
-- **Pantry Management**: Track groceries across fridge, freezer, and pantry locations
+- **Pantry Management**: Track groceries across fridge, freezer, and pantry locations with sort options (Expiration, Category, Recent)
 - **Expiration Tracking**: Visual alerts for items expiring soon
 - **Shopping Lists**: Manage shopping lists with Instacart integration
-- **Consumption Logging**: Track food usage to reduce waste
+- **Consumption Logging**: Track food usage directly from item detail modals
+- **Swipe-to-Delete**: Swipe left on any item to reveal delete button with confirmation
+- **Item Detail Modal**: Tap items to view details, log consumption, edit, or add to shopping list
 
 ## User Preferences
 
@@ -25,11 +27,17 @@ Preferred communication style: Simple, everyday language.
 - **Styling**: StyleSheet-based with a centralized theme system in `client/constants/theme.ts`
 
 **Directory Structure**:
-- `client/screens/` - Screen components (DashboardScreen, PantryScreen, etc.)
+- `client/screens/` - Screen components (PantryScreen is the main screen, ShoppingListScreen, ConsumptionScreen, etc.)
 - `client/components/` - Reusable components organized by atomic design (atoms, molecules, organisms)
-- `client/navigation/` - Navigation stack definitions
-- `client/context/` - React Context providers
+- `client/navigation/` - Navigation stack definitions (MainTabNavigator has Pantry, Add, List, Habits tabs)
+- `client/context/` - React Context providers (AppContext for groceries and shopping list state)
 - `client/hooks/` - Custom hooks for theming, screen options
+
+**Key Components**:
+- `SwipeableGroceryItem` - Grocery item card with swipe-to-delete gesture
+- `ItemDetailModal` - Full-featured modal for viewing, editing, and managing items
+- `DeleteConfirmModal` - Confirmation dialog for item deletion
+- `ConfirmationBanner` - Auto-dismissing success banner for actions like "Added to shopping list"
 
 **Design System**: The app uses a warm, sophisticated palette with cream backgrounds (#F5F1E8), category-specific pastel colors, and Playfair Display for headings paired with Inter for body text.
 
