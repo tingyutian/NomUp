@@ -26,6 +26,8 @@ type Props = NativeStackScreenProps<PantryStackParamList, "PantryMain">;
 type StorageTab = "fridge" | "freezer" | "pantry";
 type SortOption = "expiration" | "category" | "recent";
 
+const SEARCH_BAR_HEIGHT = 52;
+
 export default function PantryScreen({ navigation }: Props) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -237,15 +239,7 @@ export default function PantryScreen({ navigation }: Props) {
         </Animated.View>
       ) : null}
 
-      <Animated.View entering={shouldAnimate ? FadeInDown.delay(200) : undefined}>
-        <SearchBar
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          onAddPress={() => setShowAddModal(true)}
-        />
-      </Animated.View>
-
-      <Animated.View entering={shouldAnimate ? FadeInDown.delay(300) : undefined} style={styles.tabsContainer}>
+      <Animated.View entering={shouldAnimate ? FadeInDown.delay(200) : undefined} style={styles.tabsContainer}>
         {tabs.map((tab) => (
           <Pressable
             key={tab.key}
@@ -300,11 +294,19 @@ export default function PantryScreen({ navigation }: Props) {
         iconName="shopping-cart"
       />
 
+      <View style={[styles.fixedSearchContainer, { top: headerHeight + Spacing.lg }]}>
+        <SearchBar
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onAddPress={() => setShowAddModal(true)}
+        />
+      </View>
+
       <FlatList
         data={filteredAndSortedGroceries}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{
-          paddingTop: headerHeight + Spacing.lg,
+          paddingTop: headerHeight + Spacing.lg + SEARCH_BAR_HEIGHT + Spacing.md,
           paddingBottom: tabBarHeight + Spacing.xl,
           paddingHorizontal: Spacing.lg,
         }}
@@ -398,6 +400,12 @@ export default function PantryScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  fixedSearchContainer: {
+    position: "absolute",
+    left: Spacing.lg,
+    right: Spacing.lg,
+    zIndex: 100,
   },
   sectionHeader: {
     marginBottom: Spacing.lg,
