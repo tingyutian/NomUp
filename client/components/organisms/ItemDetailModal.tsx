@@ -61,7 +61,7 @@ export function ItemDetailModal({
   useEffect(() => {
     if (visible && item) {
       setViewMode("detail");
-      setConsumptionAmount(1);
+      setConsumptionAmount(item.usedAmount);
       setEditName(item.name);
       setEditCategory(item.category);
       setEditExpiresIn(item.expiresIn);
@@ -74,8 +74,11 @@ export function ItemDetailModal({
   if (!item) return null;
 
   const handleLogConsumption = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    onLogConsumption(item.id, consumptionAmount);
+    const amountToAdd = consumptionAmount - item.usedAmount;
+    if (amountToAdd > 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      onLogConsumption(item.id, amountToAdd);
+    }
     onClose();
   };
 
@@ -177,28 +180,10 @@ export function ItemDetailModal({
         <ThemedText type="h4" style={styles.sectionTitle}>
           Log Consumption
         </ThemedText>
-        <View style={styles.usageDisplay}>
-          <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: Spacing.xs }}>
-            Current usage: {item.usedAmount}/10
-          </ThemedText>
-          <View style={styles.usageDots}>
-            {Array.from({ length: 10 }).map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.usageDot,
-                  {
-                    backgroundColor: i < item.usedAmount ? theme.text : theme.divider,
-                  },
-                ]}
-              />
-            ))}
-          </View>
-        </View>
         <Slider
           value={consumptionAmount}
           onValueChange={setConsumptionAmount}
-          min={1}
+          min={0}
           max={10}
           step={1}
           showLabel
@@ -469,18 +454,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: Spacing.md,
     gap: Spacing.sm,
-  },
-  usageDisplay: {
-    marginBottom: Spacing.lg,
-  },
-  usageDots: {
-    flexDirection: "row",
-    gap: Spacing.xs,
-  },
-  usageDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
   },
   expirationBadge: {
     paddingHorizontal: Spacing.sm,

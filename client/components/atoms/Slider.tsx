@@ -44,7 +44,7 @@ export function Slider({
       {showLabel ? (
         <View style={styles.labelContainer}>
           <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-            AMOUNT USED
+            LOG AMOUNT
           </ThemedText>
           <ThemedText type="h4">{value}/{max}</ThemedText>
         </View>
