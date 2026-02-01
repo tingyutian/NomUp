@@ -183,7 +183,7 @@ export function ItemDetailModal({
         <Slider
           value={consumptionAmount}
           onValueChange={setConsumptionAmount}
-          min={0}
+          min={1}
           max={10}
           step={1}
           showLabel
