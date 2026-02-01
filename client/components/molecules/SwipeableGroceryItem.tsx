@@ -175,7 +175,7 @@ export function SwipeableGroceryItem({
             </View>
             <View style={styles.bottomRow}>
               <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                {item.quantity} {item.unit}
+                {item.quantity} x {item.unitAmount || 1} {item.unit}
               </ThemedText>
               <View style={[styles.expirationBadge, { backgroundColor: getExpirationColor() }]}>
                 <ThemedText type="caption" style={styles.expirationText}>

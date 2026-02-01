@@ -7,6 +7,7 @@ export interface GroceryItem {
   category: string;
   quantity: number;
   unit: string;
+  unitAmount: number;
   price: number;
   expiresIn: number;
   expirationDate: string;

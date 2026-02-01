@@ -18,6 +18,25 @@ interface ScannedItem {
   quantity: number;
   expiresIn: number;
   unit: string;
+  unitAmount: number;
+}
+
+function mergeDuplicateItems(items: ScannedItem[]): ScannedItem[] {
+  const itemMap = new Map<string, ScannedItem>();
+  
+  for (const item of items) {
+    const key = item.name.toLowerCase().trim();
+    
+    if (itemMap.has(key)) {
+      const existing = itemMap.get(key)!;
+      existing.quantity += item.quantity;
+      existing.price += item.price;
+    } else {
+      itemMap.set(key, { ...item });
+    }
+  }
+  
+  return Array.from(itemMap.values());
 }
 
 const categoryExpirationDefaults: Record<string, number> = {
@@ -45,16 +64,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const prompt = `Analyze this grocery receipt image and extract grocery items. 
       For each item, identify:
-      - name: the product name (clean it up, remove store codes)
+      - name: the product name ONLY (clean it up, remove store codes, and REMOVE any weight/size info like "1LB", "12oz", "2kg" from the name)
       - category: one of: Produce, Dairy, Bakery, Meat, Pantry, Frozen, Beverages
       - price: the price as a number
       - quantity: the quantity purchased (default to 1 if not clear)
-      - unit: the unit of measurement (units, lbs, oz, etc.)
+      - unit: the unit of measurement extracted from the product name or receipt (e.g., "lb", "oz", "kg", "g", "gal", "ct"). If a weight like "1LB" is in the product name, extract "lb" as the unit. Default to "units" only if no measurement is visible.
+      - unitAmount: the numeric amount for the unit (e.g., if product says "Cherries 1LB", unitAmount is 1. If "24oz", unitAmount is 24. Default to 1 if unclear)
       
-      IMPORTANT: Only include FOOD items. Exclude non-food items like bags, tax, discounts, store cards, etc.
+      IMPORTANT: 
+      - Only include FOOD items. Exclude non-food items like bags, tax, discounts, store cards, etc.
+      - Product names should be clean without weight info (e.g., "Cherries" not "Cherries 1LB")
+      - Extract weight/size from the name and put it in unit and unitAmount fields
       
       Return ONLY a valid JSON array of items with this structure:
-      [{"name": "...", "category": "...", "price": 0.00, "quantity": 1, "unit": "units"}]
+      [{"name": "...", "category": "...", "price": 0.00, "quantity": 1, "unit": "lb", "unitAmount": 1}]
       
       If you cannot identify any items, return an empty array: []`;
 
@@ -90,8 +113,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             price: parseFloat(item.price) || 0,
             quantity: parseInt(item.quantity) || 1,
             unit: item.unit || "units",
+            unitAmount: parseFloat(item.unitAmount) || 1,
             expiresIn: getDefaultExpiration(item.category || "Pantry"),
           }));
+          
+          items = mergeDuplicateItems(items);
         }
       } catch (parseError) {
         console.error("Error parsing Gemini response:", parseError);

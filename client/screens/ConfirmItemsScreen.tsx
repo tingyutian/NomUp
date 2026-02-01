@@ -25,6 +25,7 @@ interface ScannedItemData {
   quantity: number;
   expiresIn: number;
   unit: string;
+  unitAmount: number;
 }
 
 export default function ConfirmItemsScreen({ route, navigation }: Props) {
@@ -64,11 +65,11 @@ export default function ConfirmItemsScreen({ route, navigation }: Props) {
       console.error("Scan error:", err);
       setError("Failed to scan receipt. Please try again.");
       setItems([
-        { id: "1", name: "Organic Avocado", category: "Produce", price: 1.99, quantity: 3, expiresIn: 5, unit: "units" },
-        { id: "2", name: "Whole Almond Milk", category: "Dairy", price: 4.50, quantity: 1, expiresIn: 14, unit: "units" },
-        { id: "3", name: "Heirloom Tomatoes", category: "Produce", price: 5.20, quantity: 2, expiresIn: 7, unit: "lbs" },
-        { id: "4", name: "Greek Yogurt 1kg", category: "Dairy", price: 6.90, quantity: 1, expiresIn: 12, unit: "units" },
-        { id: "5", name: "Fresh Sourdough", category: "Bakery", price: 7.00, quantity: 1, expiresIn: 3, unit: "units" },
+        { id: "1", name: "Organic Avocado", category: "Produce", price: 1.99, quantity: 3, expiresIn: 5, unit: "ct", unitAmount: 1 },
+        { id: "2", name: "Whole Almond Milk", category: "Dairy", price: 4.50, quantity: 1, expiresIn: 14, unit: "gal", unitAmount: 0.5 },
+        { id: "3", name: "Heirloom Tomatoes", category: "Produce", price: 5.20, quantity: 2, expiresIn: 7, unit: "lb", unitAmount: 1 },
+        { id: "4", name: "Greek Yogurt", category: "Dairy", price: 6.90, quantity: 1, expiresIn: 12, unit: "oz", unitAmount: 32 },
+        { id: "5", name: "Fresh Sourdough", category: "Bakery", price: 7.00, quantity: 1, expiresIn: 3, unit: "loaf", unitAmount: 1 },
       ]);
     } finally {
       setIsLoading(false);
@@ -109,6 +110,7 @@ export default function ConfirmItemsScreen({ route, navigation }: Props) {
         category: item.category,
         quantity: item.quantity,
         unit: item.unit,
+        unitAmount: item.unitAmount || 1,
         price: item.price,
         expiresIn: item.expiresIn,
         expirationDate: expirationDate.toISOString(),

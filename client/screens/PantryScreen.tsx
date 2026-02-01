@@ -104,6 +104,7 @@ export default function PantryScreen({ navigation }: Props) {
       category: data.category,
       quantity: data.quantity,
       unit: data.unit,
+      unitAmount: data.unitAmount || 1,
       price: 0,
       expiresIn: data.expiresIn,
       expirationDate: expirationDate.toISOString(),
@@ -147,7 +148,7 @@ export default function PantryScreen({ navigation }: Props) {
 
   const handleEdit = async (
     id: string, 
-    data: { name: string; category: string; expiresIn: number; quantity: number }
+    data: { name: string; category: string; expiresIn: number; quantity: number; storageLocation: "fridge" | "freezer" | "pantry" }
   ) => {
     const today = new Date();
     const expirationDate = new Date(today);
@@ -159,6 +160,7 @@ export default function PantryScreen({ navigation }: Props) {
       quantity: data.quantity,
       expiresIn: data.expiresIn,
       expirationDate: expirationDate.toISOString(),
+      storageLocation: data.storageLocation,
     });
   };
 

@@ -18,11 +18,30 @@ import { BorderRadius, Spacing } from "@/constants/theme";
 interface EditItemModalProps {
   visible: boolean;
   onClose: () => void;
-  onSave: (data: { name: string; quantity: number; expiresIn: number }) => void;
+  onSave: (data: { name: string; quantity: number; expiresIn: number; category?: string; storageLocation?: "fridge" | "freezer" | "pantry" }) => void;
   initialName?: string;
   initialQuantity?: number;
   initialExpiresIn?: number;
+  initialCategory?: string;
+  initialStorageLocation?: "fridge" | "freezer" | "pantry";
+  showCategoryAndStorage?: boolean;
 }
+
+const STORAGE_OPTIONS: { value: "fridge" | "freezer" | "pantry"; label: string }[] = [
+  { value: "fridge", label: "Fridge" },
+  { value: "freezer", label: "Freezer" },
+  { value: "pantry", label: "Pantry" },
+];
+
+const CATEGORY_OPTIONS = [
+  "Produce",
+  "Dairy",
+  "Bakery",
+  "Meat",
+  "Pantry",
+  "Frozen",
+  "Beverages",
+];
 
 export function EditItemModal({
   visible,
@@ -31,23 +50,39 @@ export function EditItemModal({
   initialName = "",
   initialQuantity = 1,
   initialExpiresIn = 7,
+  initialCategory = "Pantry",
+  initialStorageLocation = "pantry",
+  showCategoryAndStorage = false,
 }: EditItemModalProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const [name, setName] = useState(initialName);
   const [quantity, setQuantity] = useState(initialQuantity);
   const [expiresIn, setExpiresIn] = useState(initialExpiresIn);
+  const [category, setCategory] = useState(initialCategory);
+  const [storageLocation, setStorageLocation] = useState(initialStorageLocation);
+  const [showStorageDropdown, setShowStorageDropdown] = useState(false);
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
 
   React.useEffect(() => {
     if (visible) {
       setName(initialName);
       setQuantity(initialQuantity);
       setExpiresIn(initialExpiresIn);
+      setCategory(initialCategory);
+      setStorageLocation(initialStorageLocation);
+      setShowStorageDropdown(false);
+      setShowCategoryDropdown(false);
     }
-  }, [visible, initialName, initialQuantity, initialExpiresIn]);
+  }, [visible, initialName, initialQuantity, initialExpiresIn, initialCategory, initialStorageLocation]);
 
   const handleSave = () => {
-    onSave({ name, quantity, expiresIn });
+    const data: { name: string; quantity: number; expiresIn: number; category?: string; storageLocation?: "fridge" | "freezer" | "pantry" } = { name, quantity, expiresIn };
+    if (showCategoryAndStorage) {
+      data.category = category;
+      data.storageLocation = storageLocation;
+    }
+    onSave(data);
     onClose();
   };
 
@@ -146,6 +181,88 @@ export function EditItemModal({
             </View>
           </View>
 
+          {showCategoryAndStorage ? (
+            <>
+              <View style={styles.field}>
+                <ThemedText type="small" style={[styles.label, { color: theme.textSecondary }]}>
+                  Category
+                </ThemedText>
+                <Pressable
+                  onPress={() => setShowCategoryDropdown(!showCategoryDropdown)}
+                  style={[
+                    styles.dropdownButton,
+                    {
+                      backgroundColor: theme.backgroundDefault,
+                      borderColor: theme.divider,
+                    },
+                  ]}
+                >
+                  <ThemedText type="body">{category}</ThemedText>
+                  <Feather name={showCategoryDropdown ? "chevron-up" : "chevron-down"} size={20} color={theme.text} />
+                </Pressable>
+                {showCategoryDropdown ? (
+                  <View style={[styles.dropdown, { backgroundColor: theme.backgroundDefault, borderColor: theme.divider }]}>
+                    {CATEGORY_OPTIONS.map((opt) => (
+                      <Pressable
+                        key={opt}
+                        onPress={() => {
+                          setCategory(opt);
+                          setShowCategoryDropdown(false);
+                        }}
+                        style={[
+                          styles.dropdownItem,
+                          category === opt && { backgroundColor: theme.divider },
+                        ]}
+                      >
+                        <ThemedText type="body">{opt}</ThemedText>
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+
+              <View style={styles.field}>
+                <ThemedText type="small" style={[styles.label, { color: theme.textSecondary }]}>
+                  Storage Location
+                </ThemedText>
+                <Pressable
+                  onPress={() => setShowStorageDropdown(!showStorageDropdown)}
+                  style={[
+                    styles.dropdownButton,
+                    {
+                      backgroundColor: theme.backgroundDefault,
+                      borderColor: theme.divider,
+                    },
+                  ]}
+                >
+                  <ThemedText type="body">
+                    {STORAGE_OPTIONS.find((o) => o.value === storageLocation)?.label || "Select"}
+                  </ThemedText>
+                  <Feather name={showStorageDropdown ? "chevron-up" : "chevron-down"} size={20} color={theme.text} />
+                </Pressable>
+                {showStorageDropdown ? (
+                  <View style={[styles.dropdown, { backgroundColor: theme.backgroundDefault, borderColor: theme.divider }]}>
+                    {STORAGE_OPTIONS.map((opt) => (
+                      <Pressable
+                        key={opt.value}
+                        onPress={() => {
+                          setStorageLocation(opt.value);
+                          setShowStorageDropdown(false);
+                        }}
+                        style={[
+                          styles.dropdownItem,
+                          storageLocation === opt.value && { backgroundColor: theme.divider },
+                        ]}
+                      >
+                        <ThemedText type="body">{opt.label}</ThemedText>
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+            </>
+          ) : null}
+
           <Button onPress={handleSave} style={styles.saveButton}>
             Save Changes
           </Button>
@@ -220,5 +337,24 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     marginTop: Spacing.md,
+  },
+  dropdownButton: {
+    height: 48,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  dropdown: {
+    marginTop: Spacing.xs,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  dropdownItem: {
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
   },
 });
