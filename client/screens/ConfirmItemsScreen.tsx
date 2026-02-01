@@ -119,7 +119,10 @@ export default function ConfirmItemsScreen({ route, navigation }: Props) {
     });
 
     await addGroceries(groceryItems);
-    navigation.navigate("Main");
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "Main" }],
+    });
   };
 
   const getStorageLocation = (category: string): "fridge" | "freezer" | "pantry" => {
