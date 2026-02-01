@@ -141,7 +141,25 @@ export function ItemDetailModal({
   const renderDetailView = () => (
     <>
       <View style={styles.itemInfo}>
-        <ThemedText type="h2">{item.name}</ThemedText>
+        <View style={styles.itemHeader}>
+          <ThemedText type="h2" style={styles.itemName}>{item.name}</ThemedText>
+          <View style={styles.iconActions}>
+            <Pressable
+              onPress={() => setViewMode("edit")}
+              style={[styles.iconButton, { backgroundColor: theme.backgroundDefault }]}
+              testID="button-edit-item"
+            >
+              <Feather name="edit-2" size={18} color={theme.text} />
+            </Pressable>
+            <Pressable
+              onPress={handleAddToShoppingList}
+              style={[styles.iconButton, { backgroundColor: theme.text }]}
+              testID="button-add-to-list"
+            >
+              <Feather name="shopping-cart" size={18} color={theme.buttonText} />
+            </Pressable>
+          </View>
+        </View>
         <View style={styles.itemMeta}>
           <Badge label={item.category} variant="category" category={item.category} />
           <View style={[styles.expirationBadge, { backgroundColor: getExpirationColor() }]}>
@@ -159,11 +177,29 @@ export function ItemDetailModal({
         <ThemedText type="h4" style={styles.sectionTitle}>
           Log Consumption
         </ThemedText>
+        <View style={styles.usageDisplay}>
+          <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: Spacing.xs }}>
+            Current usage: {item.usedAmount}/10
+          </ThemedText>
+          <View style={styles.usageDots}>
+            {Array.from({ length: 10 }).map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.usageDot,
+                  {
+                    backgroundColor: i < item.usedAmount ? theme.text : theme.divider,
+                  },
+                ]}
+              />
+            ))}
+          </View>
+        </View>
         <Slider
           value={consumptionAmount}
           onValueChange={setConsumptionAmount}
           min={1}
-          max={10}
+          max={10 - item.usedAmount}
           step={1}
           showLabel
         />
@@ -177,42 +213,10 @@ export function ItemDetailModal({
               THREW AWAY
             </ThemedText>
           </Pressable>
-          <Pressable
-            onPress={handleUsedAll}
-            style={[styles.actionButton, { borderColor: theme.divider }]}
-          >
-            <Feather name="check-circle" size={16} color={theme.text} />
-            <ThemedText type="small" style={{ marginLeft: Spacing.xs }}>
-              USED ALL
-            </ThemedText>
-          </Pressable>
         </View>
         <Button onPress={handleLogConsumption} style={styles.logButton}>
-          LOG {consumptionAmount} USED
+          SAVE
         </Button>
-      </View>
-
-      <View style={styles.bottomActions}>
-        <Pressable
-          onPress={() => setViewMode("edit")}
-          style={[styles.bottomButton, { backgroundColor: theme.backgroundDefault }]}
-          testID="button-edit-item"
-        >
-          <Feather name="edit-2" size={18} color={theme.text} />
-          <ThemedText type="bodyMedium" style={{ marginLeft: Spacing.sm }}>
-            Edit Item
-          </ThemedText>
-        </Pressable>
-        <Pressable
-          onPress={handleAddToShoppingList}
-          style={[styles.bottomButton, { backgroundColor: theme.text }]}
-          testID="button-add-to-list"
-        >
-          <Feather name="shopping-cart" size={18} color={theme.buttonText} />
-          <ThemedText type="bodyMedium" style={{ marginLeft: Spacing.sm, color: theme.buttonText }}>
-            Add to List
-          </ThemedText>
-        </Pressable>
       </View>
     </>
   );
@@ -351,9 +355,11 @@ export function ItemDetailModal({
         >
           <View style={styles.handle} />
           <View style={styles.header}>
-            <ThemedText type="h3">
-              {viewMode === "detail" ? "Item Details" : "Edit Item"}
-            </ThemedText>
+            {viewMode === "edit" ? (
+              <ThemedText type="h3">Edit Item</ThemedText>
+            ) : (
+              <View />
+            )}
             <Pressable onPress={onClose} style={styles.closeButton} testID="button-close-modal">
               <Feather name="x" size={24} color={theme.text} />
             </Pressable>
@@ -438,11 +444,43 @@ const styles = StyleSheet.create({
   itemInfo: {
     marginBottom: Spacing.xl,
   },
+  itemHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  itemName: {
+    flex: 1,
+    marginRight: Spacing.md,
+  },
+  iconActions: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+  },
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   itemMeta: {
     flexDirection: "row",
     alignItems: "center",
     marginTop: Spacing.md,
     gap: Spacing.sm,
+  },
+  usageDisplay: {
+    marginBottom: Spacing.lg,
+  },
+  usageDots: {
+    flexDirection: "row",
+    gap: Spacing.xs,
+  },
+  usageDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   expirationBadge: {
     paddingHorizontal: Spacing.sm,
@@ -479,18 +517,6 @@ const styles = StyleSheet.create({
   },
   logButton: {
     backgroundColor: Colors.light.text,
-  },
-  bottomActions: {
-    flexDirection: "row",
-    gap: Spacing.md,
-  },
-  bottomButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: Spacing.lg,
-    borderRadius: BorderRadius.lg,
   },
   field: {
     marginBottom: Spacing.xl,
