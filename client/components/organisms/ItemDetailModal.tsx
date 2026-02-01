@@ -199,7 +199,7 @@ export function ItemDetailModal({
           value={consumptionAmount}
           onValueChange={setConsumptionAmount}
           min={1}
-          max={10 - item.usedAmount}
+          max={10}
           step={1}
           showLabel
         />
