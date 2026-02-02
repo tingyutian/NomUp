@@ -66,7 +66,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       For each item, identify:
       - name: the product name ONLY (clean it up, remove store codes, and REMOVE any weight/size info like "1LB", "12oz", "2kg" from the name)
       - category: one of: Produce, Dairy, Bakery, Meat, Pantry, Frozen, Beverages
-      - price: the price as a number
+      - price: the LINE TOTAL - the actual dollar amount paid for this item as shown on the receipt. This is NOT the unit price. For example, if the receipt shows "2 x Apples @ $1.50 = $3.00", the price should be 3.00 (the total paid), not 1.50.
       - quantity: the quantity purchased (default to 1 if not clear)
       - unit: the unit of measurement extracted from the product name or receipt (e.g., "lb", "oz", "kg", "g", "gal", "ct"). If a weight like "1LB" is in the product name, extract "lb" as the unit. Default to "units" only if no measurement is visible.
       - unitAmount: the numeric amount for the unit (e.g., if product says "Cherries 1LB", unitAmount is 1. If "24oz", unitAmount is 24. Default to 1 if unclear)
@@ -75,6 +75,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       - Only include FOOD items. Exclude non-food items like bags, tax, discounts, store cards, etc.
       - Product names should be clean without weight info (e.g., "Cherries" not "Cherries 1LB")
       - Extract weight/size from the name and put it in unit and unitAmount fields
+      - The price field must be the LINE TOTAL (amount actually charged), not a per-unit price
       
       Return ONLY a valid JSON array of items with this structure:
       [{"name": "...", "category": "...", "price": 0.00, "quantity": 1, "unit": "lb", "unitAmount": 1}]
