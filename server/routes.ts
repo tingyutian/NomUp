@@ -205,36 +205,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const userPantry = JSON.parse(pantryJson) as Array<{ name: string; category: string }>;
       
-      // 1. Simplify ingredient name using Gemini for better TheMealDB matching
-      let searchTerm = itemName;
-      try {
-        const simplifyPrompt = `Extract the simple, base ingredient name from this grocery item for recipe searching.
-
-Item: "${itemName}"
-
-Rules:
-- Remove brand names, varieties, and descriptors (e.g., "Boneless Chicken Breast" → "chicken")
-- Remove preparation details (e.g., "Diced Tomatoes" → "tomatoes")
-- Remove size/quantity descriptors (e.g., "Large Eggs" → "eggs")
-- Keep the core ingredient type (e.g., "Persian Limes" → "lime")
-- For processed foods, use the main ingredient if applicable (e.g., "Chicken Sausage" → "sausage")
-- If it's a unique product with no base ingredient, return it simplified (e.g., "Impossible Burger" → "burger")
-
-Return ONLY the simplified ingredient name, nothing else. Single word preferred when possible.`;
-
-        const simplifyResponse = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: [{ role: "user", parts: [{ text: simplifyPrompt }] }],
-        });
-        const simplifiedName = simplifyResponse.text?.trim().toLowerCase();
-        if (simplifiedName && simplifiedName.length > 0 && simplifiedName.length < 30) {
-          searchTerm = simplifiedName;
-          console.log(`Simplified "${itemName}" → "${searchTerm}" for recipe search`);
+      // 1. Simplify ingredient name - use lookup table first, then AI as fallback
+      const ingredientLookup: Record<string, string> = {
+        "chicken breast": "chicken", "boneless chicken breast": "chicken", "chicken thigh": "chicken",
+        "chicken drumstick": "chicken", "chicken wing": "chicken", "ground chicken": "chicken",
+        "ground beef": "beef", "beef steak": "beef", "sirloin": "beef", "ribeye": "beef",
+        "ground turkey": "turkey", "turkey breast": "turkey",
+        "ground pork": "pork", "pork chop": "pork", "pork loin": "pork", "bacon": "pork",
+        "salmon fillet": "salmon", "salmon steak": "salmon",
+        "shrimp": "shrimp", "prawns": "shrimp",
+        "large eggs": "eggs", "medium eggs": "eggs", "cage free eggs": "eggs",
+        "whole milk": "milk", "2% milk": "milk", "skim milk": "milk",
+        "cheddar cheese": "cheese", "mozzarella": "cheese", "parmesan": "cheese",
+        "roma tomatoes": "tomatoes", "cherry tomatoes": "tomatoes", "diced tomatoes": "tomatoes",
+        "russet potatoes": "potatoes", "red potatoes": "potatoes", "yukon gold": "potatoes",
+        "yellow onion": "onion", "red onion": "onion", "white onion": "onion",
+        "garlic cloves": "garlic", "minced garlic": "garlic",
+        "bell pepper": "pepper", "red pepper": "pepper", "green pepper": "pepper",
+        "persian limes": "lime", "key limes": "lime",
+        "meyer lemons": "lemon", "organic lemons": "lemon",
+        "baby spinach": "spinach", "fresh spinach": "spinach",
+        "romaine lettuce": "lettuce", "iceberg lettuce": "lettuce",
+        "white rice": "rice", "brown rice": "rice", "jasmine rice": "rice", "basmati rice": "rice",
+        "spaghetti": "pasta", "penne": "pasta", "fettuccine": "pasta", "linguine": "pasta",
+        "olive oil": "olive oil", "vegetable oil": "oil", "canola oil": "oil",
+        "butter": "butter", "unsalted butter": "butter", "salted butter": "butter",
+        "all purpose flour": "flour", "bread flour": "flour", "wheat flour": "flour",
+        "brown sugar": "sugar", "white sugar": "sugar", "cane sugar": "sugar",
+        "impossible burger": "burger", "beyond burger": "burger",
+      };
+      
+      const lowerItemName = itemName.toLowerCase();
+      let searchTerm = ingredientLookup[lowerItemName];
+      
+      if (!searchTerm) {
+        // Check if item contains a known ingredient
+        for (const [key, value] of Object.entries(ingredientLookup)) {
+          if (lowerItemName.includes(key) || key.includes(lowerItemName)) {
+            searchTerm = value;
+            break;
+          }
         }
-      } catch (simplifyError) {
-        console.error("Error simplifying ingredient name:", simplifyError);
-        // Fall back to original name
       }
+      
+      // If not in lookup, use AI as fallback
+      if (!searchTerm) {
+        try {
+          const simplifyPrompt = `Simplify this grocery item to a basic ingredient for recipe search: "${itemName}". Return ONLY the single-word base ingredient (e.g., "Boneless Chicken Breast" → "chicken"). One word only.`;
+          const simplifyResponse = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: [{ role: "user", parts: [{ text: simplifyPrompt }] }],
+          });
+          const simplifiedName = simplifyResponse.text?.trim().toLowerCase();
+          if (simplifiedName && simplifiedName.length > 0 && simplifiedName.length < 20) {
+            searchTerm = simplifiedName;
+          }
+        } catch (simplifyError) {
+          searchTerm = lowerItemName.split(" ").pop() || lowerItemName; // Use last word as fallback
+        }
+      }
+      
+      console.log(`Ingredient lookup: "${itemName}" → "${searchTerm}"`);
       
       // 2. Fetch from TheMealDB
       const mealDbUrl = `https://www.themealdb.com/api/json/v1/1/filter.php?i=${encodeURIComponent(searchTerm)}`;
@@ -246,8 +277,8 @@ Return ONLY the simplified ingredient name, nothing else. Single word preferred 
       }
 
       // 2. Get full recipe details (includes ingredients & instructions)
-      // Limit to 8 recipes to keep API response fast
-      const mealsToFetch = mealData.meals.slice(0, 8);
+      // Limit to 5 recipes for faster response
+      const mealsToFetch = mealData.meals.slice(0, 5);
       console.log(`Fetching ${mealsToFetch.length} recipe details...`);
       
       const recipePromises = mealsToFetch.map(async (meal: any) => {
@@ -289,58 +320,43 @@ Return ONLY the simplified ingredient name, nothing else. Single word preferred 
         return res.json({ recipes: [] });
       }
 
-      // 3. Score recipes with Gemini
-      const pantryNames = userPantry.map((item) => item.name);
+      // 3. Score recipes with fast local matching (no AI call)
+      const pantryNames = userPantry.map((item) => item.name.toLowerCase());
+      const commonStaples = ["salt", "pepper", "water", "oil", "olive oil", "vegetable oil", "sugar", "flour"];
       
-      const prompt = `You are a cooking ingredient matcher. Match user's pantry items to recipe ingredients.
-
-USER'S PANTRY: ${pantryNames.join(", ")}
-
-RECIPES:
-${recipes.map((r: any, i: number) => `${i + 1}. ${r.name}: ${r.ingredients.join(", ")}`).join("\n")}
-
-For each recipe, determine which ingredients the user HAS (from their pantry) and which they are MISSING.
-
-Matching rules:
-- Exact match counts (chicken = chicken)
-- Generic matches count (chicken breast matches chicken, ground beef matches beef)
-- Substitutable ingredients count (chicken thigh ~ chicken drumstick)
-- Different items don't match (chicken ≠ chickpeas, butter ≠ peanut butter)
-- Common pantry staples like salt, pepper, water, oil can be assumed as matched
-
-Return ONLY valid JSON array (no markdown, no explanation):
-[{"recipeIndex": 1, "matched": ["ingredient1", "ingredient2"], "missing": ["ingredient3"]}]`;
-
-      console.log("Calling Gemini for ingredient matching...");
-      let responseText = "[]";
-      try {
-        const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
+      // Helper to check if pantry has an ingredient (fuzzy match)
+      const pantryHasIngredient = (ingredient: string): boolean => {
+        const ing = ingredient.toLowerCase();
+        // Check if it's a common staple
+        if (commonStaples.some(s => ing.includes(s))) return true;
+        // Check pantry items
+        return pantryNames.some(p => {
+          // Exact match
+          if (p === ing || ing === p) return true;
+          // Partial match (chicken matches chicken breast)
+          if (p.includes(ing) || ing.includes(p)) return true;
+          // Word match (e.g., "boneless chicken breast" contains "chicken")
+          const pWords = p.split(" ");
+          const ingWords = ing.split(" ");
+          return pWords.some(pw => ingWords.some(iw => pw === iw && pw.length > 3));
         });
-        responseText = response.text || "[]";
-        console.log("Gemini response received");
-      } catch (geminiError) {
-        console.error("Gemini API error:", geminiError);
-        // If Gemini fails, return recipes without scoring
-      }
+      };
 
-      let scoringResults: Array<{ recipeIndex: number; matched: string[]; missing: string[] }> = [];
+      console.log("Scoring recipes with local matching...");
       
-      try {
-        const jsonMatch = responseText.match(/\[[\s\S]*\]/);
-        if (jsonMatch) {
-          scoringResults = JSON.parse(jsonMatch[0]);
-        }
-      } catch (parseError) {
-        console.error("Error parsing Gemini scoring response:", parseError);
-      }
-
       // 4. Combine recipe data with scoring
-      const scoredRecipes = recipes.map((recipe: any, index: number) => {
-        const scoreData = scoringResults.find((r) => r.recipeIndex === index + 1);
-        const matched = scoreData?.matched || [];
-        const missing = scoreData?.missing || recipe.ingredients;
+      const scoredRecipes = recipes.map((recipe: any) => {
+        const matched: string[] = [];
+        const missing: string[] = [];
+        
+        for (const ingredient of recipe.ingredients) {
+          if (pantryHasIngredient(ingredient)) {
+            matched.push(ingredient);
+          } else {
+            missing.push(ingredient);
+          }
+        }
+        
         const totalIngredients = recipe.ingredients.length;
         const matchedCount = matched.length;
         const matchScore = totalIngredients > 0 ? Math.round((matchedCount / totalIngredients) * 100) : 0;
