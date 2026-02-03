@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Pressable,
   Image,
+  Dimensions,
 } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, useNavigation } from "@react-navigation/native";
@@ -22,6 +23,11 @@ import { useApp } from "@/context/AppContext";
 import { getApiUrl } from "@/lib/query-client";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import type { RootStackParamList, ScoredRecipe } from "@/navigation/RootStackNavigator";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const CARD_GAP = Spacing.md;
+const HORIZONTAL_PADDING = Spacing.md;
+const CARD_WIDTH = (SCREEN_WIDTH - HORIZONTAL_PADDING * 2 - CARD_GAP) / 2;
 
 type RecipeFeedRouteProp = RouteProp<RootStackParamList, "RecipeFeed">;
 type RecipeFeedNavProp = NativeStackNavigationProp<RootStackParamList, "RecipeFeed">;
@@ -183,14 +189,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   grid: {
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: HORIZONTAL_PADDING,
   },
   row: {
-    gap: Spacing.md,
+    justifyContent: "space-between",
     marginBottom: Spacing.md,
   },
   card: {
-    flex: 1,
+    width: CARD_WIDTH,
     borderRadius: BorderRadius.lg,
     overflow: "hidden",
   },
@@ -199,10 +205,12 @@ const styles = StyleSheet.create({
     height: 140,
   },
   cardContent: {
-    padding: Spacing.md,
+    padding: Spacing.sm,
+    paddingBottom: Spacing.md,
   },
   cardTitle: {
     marginBottom: Spacing.sm,
+    lineHeight: 18,
   },
   badge: {
     flexDirection: "row",
