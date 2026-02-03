@@ -9,8 +9,10 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import PantryStackNavigator from "@/navigation/PantryStackNavigator";
 import ShoppingStackNavigator from "@/navigation/ShoppingStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
+import { useApp } from "@/context/AppContext";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import type { RootStackParamList } from "@/navigation/RootStackNavigator";
+import { ThemedText } from "@/components/ThemedText";
 
 export type MainTabParamList = {
   PantryTab: undefined;
@@ -40,8 +42,22 @@ function EmptyScreen() {
   return <View />;
 }
 
+function ShoppingBadge({ count }: { count: number }) {
+  if (count === 0) return null;
+  
+  return (
+    <View style={styles.badge}>
+      <ThemedText type="caption" style={styles.badgeText}>
+        {count > 99 ? "99+" : count}
+      </ThemedText>
+    </View>
+  );
+}
+
 export default function MainTabNavigator() {
   const { theme, isDark } = useTheme();
+  const { shoppingList } = useApp();
+  const uncheckedCount = shoppingList.filter((item) => !item.checked).length;
 
   return (
     <Tab.Navigator
@@ -110,7 +126,10 @@ export default function MainTabNavigator() {
         options={{
           title: "LIST",
           tabBarIcon: ({ color, size }) => (
-            <Feather name="list" size={size} color={color} />
+            <View>
+              <Feather name="list" size={size} color={color} />
+              <ShoppingBadge count={uncheckedCount} />
+            </View>
           ),
         }}
       />
@@ -141,5 +160,23 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+  },
+  badge: {
+    position: "absolute",
+    top: -4,
+    right: -8,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: Colors.light.expiredRed,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: "#FFF",
+    fontSize: 10,
+    fontWeight: "700",
+    lineHeight: 12,
   },
 });

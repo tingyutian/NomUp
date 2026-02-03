@@ -10,6 +10,8 @@ import {
   ScrollView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
@@ -19,6 +21,9 @@ import { Badge } from "@/components/atoms/Badge";
 import { useTheme } from "@/hooks/useTheme";
 import { BorderRadius, Spacing, Colors } from "@/constants/theme";
 import { GroceryItem } from "@/context/AppContext";
+import type { RootStackParamList } from "@/navigation/RootStackNavigator";
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface ItemDetailModalProps {
   visible: boolean;
@@ -53,6 +58,14 @@ export function ItemDetailModal({
 }: ItemDetailModalProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<NavigationProp>();
+
+  const handleFindRecipes = () => {
+    if (!item) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onClose();
+    navigation.navigate("RecipeFeed", { itemId: item.id, itemName: item.name });
+  };
   
   const [viewMode, setViewMode] = useState<ViewMode>("detail");
   const [consumptionAmount, setConsumptionAmount] = useState(1);
@@ -164,6 +177,13 @@ export function ItemDetailModal({
               testID="button-edit-item"
             >
               <Feather name="edit-2" size={18} color={theme.text} />
+            </Pressable>
+            <Pressable
+              onPress={handleFindRecipes}
+              style={[styles.iconButton, { backgroundColor: Colors.light.success }]}
+              testID="button-find-recipes"
+            >
+              <Feather name="book-open" size={18} color="#FFF" />
             </Pressable>
             <Pressable
               onPress={handleAddToShoppingList}
