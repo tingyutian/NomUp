@@ -215,34 +215,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // 2. Get full recipe details (includes ingredients & instructions)
-      const recipePromises = mealData.meals.slice(0, 20).map(async (meal: any) => {
-        const detailUrl = `https://www.themealdb.com/api/json/v1/1/lookup.php?i=${meal.idMeal}`;
-        const detailResponse = await fetch(detailUrl);
-        const detailData = await detailResponse.json();
-        const fullMeal = detailData.meals?.[0];
-        
-        if (!fullMeal) return null;
+      // Limit to 8 recipes to keep API response fast
+      const mealsToFetch = mealData.meals.slice(0, 8);
+      console.log(`Fetching ${mealsToFetch.length} recipe details...`);
+      
+      const recipePromises = mealsToFetch.map(async (meal: any) => {
+        try {
+          const detailUrl = `https://www.themealdb.com/api/json/v1/1/lookup.php?i=${meal.idMeal}`;
+          const detailResponse = await fetch(detailUrl);
+          const detailData = await detailResponse.json();
+          const fullMeal = detailData.meals?.[0];
+          
+          if (!fullMeal) return null;
 
-        // Extract ingredients from strIngredient1-20
-        const ingredients: string[] = [];
-        for (let i = 1; i <= 20; i++) {
-          const ingredient = fullMeal[`strIngredient${i}`];
-          if (ingredient?.trim()) {
-            ingredients.push(ingredient.trim());
+          // Extract ingredients from strIngredient1-20
+          const ingredients: string[] = [];
+          for (let i = 1; i <= 20; i++) {
+            const ingredient = fullMeal[`strIngredient${i}`];
+            if (ingredient?.trim()) {
+              ingredients.push(ingredient.trim());
+            }
           }
-        }
 
-        return {
-          id: fullMeal.idMeal,
-          name: fullMeal.strMeal,
-          thumbnail: fullMeal.strMealThumb,
-          category: fullMeal.strCategory,
-          instructions: fullMeal.strInstructions,
-          ingredients,
-        };
+          return {
+            id: fullMeal.idMeal,
+            name: fullMeal.strMeal,
+            thumbnail: fullMeal.strMealThumb,
+            category: fullMeal.strCategory,
+            instructions: fullMeal.strInstructions,
+            ingredients,
+          };
+        } catch (err) {
+          console.error(`Error fetching recipe ${meal.idMeal}:`, err);
+          return null;
+        }
       });
 
       const recipes = (await Promise.all(recipePromises)).filter(Boolean);
+      console.log(`Fetched ${recipes.length} recipes successfully`);
 
       if (recipes.length === 0) {
         return res.json({ recipes: [] });
@@ -270,12 +280,20 @@ Matching rules:
 Return ONLY valid JSON array (no markdown, no explanation):
 [{"recipeIndex": 1, "matched": ["ingredient1", "ingredient2"], "missing": ["ingredient3"]}]`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-      });
+      console.log("Calling Gemini for ingredient matching...");
+      let responseText = "[]";
+      try {
+        const response = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+        });
+        responseText = response.text || "[]";
+        console.log("Gemini response received");
+      } catch (geminiError) {
+        console.error("Gemini API error:", geminiError);
+        // If Gemini fails, return recipes without scoring
+      }
 
-      const responseText = response.text || "[]";
       let scoringResults: Array<{ recipeIndex: number; matched: string[]; missing: string[] }> = [];
       
       try {
