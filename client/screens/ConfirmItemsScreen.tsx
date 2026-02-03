@@ -134,7 +134,6 @@ export default function ConfirmItemsScreen({ route, navigation }: Props) {
     return "pantry";
   };
 
-  const totalPrice = items.reduce((sum, item) => sum + item.price, 0);
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
   if (isLoading) {
@@ -184,7 +183,6 @@ export default function ConfirmItemsScreen({ route, navigation }: Props) {
               key={item.id}
               name={item.name}
               category={item.category}
-              price={item.price}
               quantity={item.quantity}
               expiresIn={item.expiresIn}
               onQuantityChange={(delta) => handleQuantityChange(item.id, delta)}
@@ -206,12 +204,6 @@ export default function ConfirmItemsScreen({ route, navigation }: Props) {
         ]}
       >
         <View style={styles.summary}>
-          <View>
-            <ThemedText type="small" style={{ color: theme.textSecondary }}>
-              TOTAL EST.
-            </ThemedText>
-            <ThemedText type="h3">${totalPrice.toFixed(2)}</ThemedText>
-          </View>
           <View style={styles.itemCount}>
             <ThemedText type="small" style={{ color: theme.textSecondary }}>
               ITEMS

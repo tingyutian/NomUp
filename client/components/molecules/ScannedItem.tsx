@@ -9,7 +9,6 @@ import { BorderRadius, Spacing } from "@/constants/theme";
 interface ScannedItemProps {
   name: string;
   category: string;
-  price: number;
   quantity: number;
   expiresIn: number;
   onQuantityChange: (delta: number) => void;
@@ -20,7 +19,6 @@ interface ScannedItemProps {
 export function ScannedItem({
   name,
   category,
-  price,
   quantity,
   expiresIn,
   onQuantityChange,
@@ -39,9 +37,6 @@ export function ScannedItem({
           <ThemedText type="bodyMedium">{name}</ThemedText>
           <View style={styles.metaRow}>
             <Badge label={category} variant="category" category={category} />
-            <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: Spacing.sm }}>
-              ${price.toFixed(2)}
-            </ThemedText>
             <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: Spacing.sm }}>
               Exp. {expiresIn}d
             </ThemedText>
