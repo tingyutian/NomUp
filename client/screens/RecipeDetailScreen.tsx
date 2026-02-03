@@ -62,7 +62,7 @@ export default function RecipeDetailScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
-  const { addToShoppingList, shoppingList } = useApp();
+  const { addToShoppingList, addMultipleToShoppingList, shoppingList } = useApp();
   const { recipe } = route.params;
   
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
@@ -82,8 +82,8 @@ export default function RecipeDetailScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await addToShoppingList({
       name: ingredient,
-      category: "Pantry",
-      source: "recipe",
+      quantity: 1,
+      unit: "",
     });
     setAddedItems((prev) => new Set([...prev, ingredient.toLowerCase()]));
     setShowBanner(true);
@@ -93,13 +93,15 @@ export default function RecipeDetailScreen() {
   const handleAddAllMissing = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const toAdd = recipe.missingIngredients.filter((ing) => !isInList(ing));
-    for (const ingredient of toAdd) {
-      await addToShoppingList({
+    if (toAdd.length === 0) return;
+    
+    await addMultipleToShoppingList(
+      toAdd.map((ingredient) => ({
         name: ingredient,
-        category: "Pantry",
-        source: "recipe",
-      });
-    }
+        quantity: 1,
+        unit: "",
+      }))
+    );
     setAddedItems((prev) => {
       const next = new Set(prev);
       toAdd.forEach((ing) => next.add(ing.toLowerCase()));

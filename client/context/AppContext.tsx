@@ -36,6 +36,7 @@ interface AppContextType {
   useGrocery: (id: string, amount: number) => Promise<void>;
   throwAwayGrocery: (id: string) => Promise<void>;
   addToShoppingList: (item: Omit<ShoppingListItem, "id" | "checked" | "addedAt">) => Promise<void>;
+  addMultipleToShoppingList: (items: Array<Omit<ShoppingListItem, "id" | "checked" | "addedAt">>) => Promise<void>;
   removeFromShoppingList: (id: string) => Promise<void>;
   updateShoppingListItem: (id: string, updates: Partial<ShoppingListItem>) => Promise<void>;
   toggleShoppingListItem: (id: string) => Promise<void>;
@@ -147,11 +148,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addToShoppingList = async (item: Omit<ShoppingListItem, "id" | "checked" | "addedAt">) => {
     const newItem: ShoppingListItem = {
       ...item,
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       checked: false,
       addedAt: new Date().toISOString(),
     };
     const newList = [...shoppingList, newItem];
+    await saveShoppingList(newList);
+  };
+
+  const addMultipleToShoppingList = async (items: Array<Omit<ShoppingListItem, "id" | "checked" | "addedAt">>) => {
+    const now = Date.now();
+    const newItems: ShoppingListItem[] = items.map((item, index) => ({
+      ...item,
+      id: `${now}-${index}-${Math.random().toString(36).substr(2, 9)}`,
+      checked: false,
+      addedAt: new Date().toISOString(),
+    }));
+    const newList = [...shoppingList, ...newItems];
     await saveShoppingList(newList);
   };
 
@@ -200,6 +213,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         useGrocery,
         throwAwayGrocery,
         addToShoppingList,
+        addMultipleToShoppingList,
         removeFromShoppingList,
         updateShoppingListItem,
         toggleShoppingListItem,
