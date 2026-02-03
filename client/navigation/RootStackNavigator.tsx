@@ -4,15 +4,36 @@ import MainTabNavigator from "@/navigation/MainTabNavigator";
 import WelcomeScreen from "@/screens/WelcomeScreen";
 import ScanReceiptScreen from "@/screens/ScanReceiptScreen";
 import ConfirmItemsScreen from "@/screens/ConfirmItemsScreen";
+import RecipeFeedScreen from "@/screens/RecipeFeedScreen";
+import RecipeDetailScreen from "@/screens/RecipeDetailScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { useApp } from "@/context/AppContext";
 import { Colors } from "@/constants/theme";
+
+export interface ScoredRecipe {
+  id: string;
+  name: string;
+  thumbnail: string;
+  category: string;
+  instructions: string;
+  ingredients: string[];
+  matchScore: number;
+  matchedIngredients: string[];
+  missingIngredients: string[];
+  stats: {
+    total: number;
+    matched: number;
+    missing: number;
+  };
+}
 
 export type RootStackParamList = {
   Welcome: undefined;
   Main: undefined;
   ScanReceipt: undefined;
   ConfirmItems: { imageBase64: string };
+  RecipeFeed: { itemId: string; itemName: string };
+  RecipeDetail: { recipe: ScoredRecipe };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -55,6 +76,20 @@ export default function RootStackNavigator() {
         component={ConfirmItemsScreen}
         options={{
           headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="RecipeFeed"
+        component={RecipeFeedScreen}
+        options={{
+          headerTitle: "Recipes",
+        }}
+      />
+      <Stack.Screen
+        name="RecipeDetail"
+        component={RecipeDetailScreen}
+        options={{
+          headerTitle: "",
         }}
       />
     </Stack.Navigator>

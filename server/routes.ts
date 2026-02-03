@@ -193,6 +193,132 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  // Recipe discovery endpoints
+  app.get("/api/recipes/by-ingredient/:itemName", async (req, res) => {
+    try {
+      const { itemName } = req.params;
+      const pantryJson = req.query.pantry as string;
+      
+      if (!pantryJson) {
+        return res.status(400).json({ error: "Pantry data is required" });
+      }
+
+      const userPantry = JSON.parse(pantryJson) as Array<{ name: string; category: string }>;
+      
+      // 1. Fetch from TheMealDB
+      const mealDbUrl = `https://www.themealdb.com/api/json/v1/1/filter.php?i=${encodeURIComponent(itemName)}`;
+      const mealResponse = await fetch(mealDbUrl);
+      const mealData = await mealResponse.json();
+      
+      if (!mealData.meals) {
+        return res.json({ recipes: [] });
+      }
+
+      // 2. Get full recipe details (includes ingredients & instructions)
+      const recipePromises = mealData.meals.slice(0, 20).map(async (meal: any) => {
+        const detailUrl = `https://www.themealdb.com/api/json/v1/1/lookup.php?i=${meal.idMeal}`;
+        const detailResponse = await fetch(detailUrl);
+        const detailData = await detailResponse.json();
+        const fullMeal = detailData.meals?.[0];
+        
+        if (!fullMeal) return null;
+
+        // Extract ingredients from strIngredient1-20
+        const ingredients: string[] = [];
+        for (let i = 1; i <= 20; i++) {
+          const ingredient = fullMeal[`strIngredient${i}`];
+          if (ingredient?.trim()) {
+            ingredients.push(ingredient.trim());
+          }
+        }
+
+        return {
+          id: fullMeal.idMeal,
+          name: fullMeal.strMeal,
+          thumbnail: fullMeal.strMealThumb,
+          category: fullMeal.strCategory,
+          instructions: fullMeal.strInstructions,
+          ingredients,
+        };
+      });
+
+      const recipes = (await Promise.all(recipePromises)).filter(Boolean);
+
+      if (recipes.length === 0) {
+        return res.json({ recipes: [] });
+      }
+
+      // 3. Score recipes with Gemini
+      const pantryNames = userPantry.map((item) => item.name);
+      
+      const prompt = `You are a cooking ingredient matcher. Match user's pantry items to recipe ingredients.
+
+USER'S PANTRY: ${pantryNames.join(", ")}
+
+RECIPES:
+${recipes.map((r: any, i: number) => `${i + 1}. ${r.name}: ${r.ingredients.join(", ")}`).join("\n")}
+
+For each recipe, determine which ingredients the user HAS (from their pantry) and which they are MISSING.
+
+Matching rules:
+- Exact match counts (chicken = chicken)
+- Generic matches count (chicken breast matches chicken, ground beef matches beef)
+- Substitutable ingredients count (chicken thigh ~ chicken drumstick)
+- Different items don't match (chicken ≠ chickpeas, butter ≠ peanut butter)
+- Common pantry staples like salt, pepper, water, oil can be assumed as matched
+
+Return ONLY valid JSON array (no markdown, no explanation):
+[{"recipeIndex": 1, "matched": ["ingredient1", "ingredient2"], "missing": ["ingredient3"]}]`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+      });
+
+      const responseText = response.text || "[]";
+      let scoringResults: Array<{ recipeIndex: number; matched: string[]; missing: string[] }> = [];
+      
+      try {
+        const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          scoringResults = JSON.parse(jsonMatch[0]);
+        }
+      } catch (parseError) {
+        console.error("Error parsing Gemini scoring response:", parseError);
+      }
+
+      // 4. Combine recipe data with scoring
+      const scoredRecipes = recipes.map((recipe: any, index: number) => {
+        const scoreData = scoringResults.find((r) => r.recipeIndex === index + 1);
+        const matched = scoreData?.matched || [];
+        const missing = scoreData?.missing || recipe.ingredients;
+        const totalIngredients = recipe.ingredients.length;
+        const matchedCount = matched.length;
+        const matchScore = totalIngredients > 0 ? Math.round((matchedCount / totalIngredients) * 100) : 0;
+
+        return {
+          ...recipe,
+          matchScore,
+          matchedIngredients: matched,
+          missingIngredients: missing,
+          stats: {
+            total: totalIngredients,
+            matched: matchedCount,
+            missing: missing.length,
+          },
+        };
+      });
+
+      // 5. Sort by match score (highest first)
+      scoredRecipes.sort((a: any, b: any) => b.matchScore - a.matchScore);
+
+      res.json({ recipes: scoredRecipes });
+    } catch (error) {
+      console.error("Recipe fetch error:", error);
+      res.status(500).json({ error: "Failed to fetch recipes" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
