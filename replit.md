@@ -11,7 +11,8 @@ Core features:
 - **Shopping Lists**: Manage shopping lists with Instacart integration
 - **Consumption Logging**: Track food usage directly from item detail modals
 - **Swipe-to-Delete**: Swipe left on any item to reveal delete button with confirmation
-- **Item Detail Modal**: Tap items to view details, log consumption, edit, or add to shopping list
+- **Item Detail Modal**: Tap items to view details, log consumption, edit, find recipes, or add to shopping list
+- **Recipe Discovery**: AI-powered recipe suggestions based on pantry items, accessible via ItemDetailModal. Uses TheMealDB API for recipes and Gemini for intelligent ingredient matching. Shows match percentage, "You Have" and "Need to Buy" sections, with ability to add missing ingredients to shopping list
 
 **Data Structure Notes**:
 - GroceryItem includes `unitAmount` field for numeric measurements (e.g., 0.5 for "0.5 lb", 24 for "24 oz")
@@ -54,6 +55,7 @@ Preferred communication style: Simple, everyday language.
 
 **Key Endpoints**:
 - `POST /api/scan-receipt` - Analyzes receipt images and extracts grocery items
+- `GET /api/recipes/by-ingredient/:itemName` - Fetches recipes using TheMealDB and scores them with Gemini AI based on user's pantry items (passed as query param `pantry`)
 - Chat and image generation routes available through `server/replit_integrations/`
 
 **Database Schema**: Located in `shared/schema.ts`, currently includes users table. The schema uses Drizzle ORM with Zod validation via `drizzle-zod`.
