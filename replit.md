@@ -5,13 +5,18 @@
 NomUp is a mobile-first grocery management app that helps users prevent food waste. The app tracks groceries, manages expiration dates, and simplifies shopping through AI-powered receipt scanning. Built with React Native (Expo) for the frontend and Express.js for the backend, the app features a distinctive "editorial grocery journal" aesthetic with serif typography and pastel category colors.
 
 Core features:
-- **Receipt Scanning**: AI-powered grocery receipt analysis using Gemini
+- **Receipt Scanning**: AI-powered grocery receipt analysis using Gemini with automatic duplicate detection (merges items with same name, combines quantities)
 - **Pantry Management**: Track groceries across fridge, freezer, and pantry locations with sort options (Expiration, Category, Recent)
 - **Expiration Tracking**: Visual alerts for items expiring soon
 - **Shopping Lists**: Manage shopping lists with Instacart integration
 - **Consumption Logging**: Track food usage directly from item detail modals
 - **Swipe-to-Delete**: Swipe left on any item to reveal delete button with confirmation
 - **Item Detail Modal**: Tap items to view details, log consumption, edit, or add to shopping list
+
+**Data Structure Notes**:
+- GroceryItem includes `unitAmount` field for numeric measurements (e.g., 0.5 for "0.5 lb", 24 for "24 oz")
+- Item display shows simplified format: "0.5 lb" for single items, "2 x 0.5 lb" only when quantity > 1
+- Price tracking is stored in data but currently hidden from UI
 
 ## User Preferences
 
@@ -34,8 +39,9 @@ Preferred communication style: Simple, everyday language.
 - `client/hooks/` - Custom hooks for theming, screen options
 
 **Key Components**:
-- `SwipeableGroceryItem` - Grocery item card with swipe-to-delete gesture
+- `SwipeableGroceryItem` - Grocery item card with swipe-to-delete gesture, simplified unit display
 - `ItemDetailModal` - Full-featured modal for viewing, editing, and managing items
+- `EditItemModal` - Edit modal with separate Category and Storage Location dropdown selectors
 - `DeleteConfirmModal` - Confirmation dialog for item deletion
 - `ConfirmationBanner` - Auto-dismissing success banner for actions like "Added to shopping list"
 
