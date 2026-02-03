@@ -205,8 +205,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const userPantry = JSON.parse(pantryJson) as Array<{ name: string; category: string }>;
       
-      // 1. Fetch from TheMealDB
-      const mealDbUrl = `https://www.themealdb.com/api/json/v1/1/filter.php?i=${encodeURIComponent(itemName)}`;
+      // 1. Simplify ingredient name using Gemini for better TheMealDB matching
+      let searchTerm = itemName;
+      try {
+        const simplifyPrompt = `Extract the simple, base ingredient name from this grocery item for recipe searching.
+
+Item: "${itemName}"
+
+Rules:
+- Remove brand names, varieties, and descriptors (e.g., "Boneless Chicken Breast" → "chicken")
+- Remove preparation details (e.g., "Diced Tomatoes" → "tomatoes")
+- Remove size/quantity descriptors (e.g., "Large Eggs" → "eggs")
+- Keep the core ingredient type (e.g., "Persian Limes" → "lime")
+- For processed foods, use the main ingredient if applicable (e.g., "Chicken Sausage" → "sausage")
+- If it's a unique product with no base ingredient, return it simplified (e.g., "Impossible Burger" → "burger")
+
+Return ONLY the simplified ingredient name, nothing else. Single word preferred when possible.`;
+
+        const simplifyResponse = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: [{ role: "user", parts: [{ text: simplifyPrompt }] }],
+        });
+        const simplifiedName = simplifyResponse.text?.trim().toLowerCase();
+        if (simplifiedName && simplifiedName.length > 0 && simplifiedName.length < 30) {
+          searchTerm = simplifiedName;
+          console.log(`Simplified "${itemName}" → "${searchTerm}" for recipe search`);
+        }
+      } catch (simplifyError) {
+        console.error("Error simplifying ingredient name:", simplifyError);
+        // Fall back to original name
+      }
+      
+      // 2. Fetch from TheMealDB
+      const mealDbUrl = `https://www.themealdb.com/api/json/v1/1/filter.php?i=${encodeURIComponent(searchTerm)}`;
       const mealResponse = await fetch(mealDbUrl);
       const mealData = await mealResponse.json();
       
