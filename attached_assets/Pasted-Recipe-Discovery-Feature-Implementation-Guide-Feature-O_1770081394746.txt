@@ -1,0 +1,578 @@
+Recipe Discovery Feature - Implementation Guide
+Feature Overview
+Add recipe discovery to NomUp. Users tap an item in their pantry → see recipes they can make → add missing ingredients to shopping list.
+Core Flow: Item Detail Modal → Recipe Feed Screen → Recipe Detail Screen → Shopping List
+
+User Flow (Simplified)
+
+1. User taps "Chicken Breast" in pantry
+2. Opens ItemDetailModal
+3. Taps "Find Recipes" button
+4. Navigate to RecipeFeedScreen
+   - Shows loading for 4 seconds
+   - Displays Pinterest-style grid of recipes
+   - Sorted by match % (recipes with most pantry ingredients first)
+5. User taps recipe card
+6. Opens RecipeDetailScreen
+   - Shows ingredients in 2 sections: "You Have" and "Need to Buy"
+   - User taps cart icon on missing ingredients
+   - Adds to shopping list with checkmark feedback
+7. Shopping List tab shows badge with count
+
+
+New Screens & Components
+Screens
+	∙	client/screens/RecipeFeedScreen.tsx - Pinterest grid of recipes
+	∙	client/screens/RecipeDetailScreen.tsx - Recipe details with ingredient checklist
+Components
+	∙	client/components/organisms/RecipeCard.tsx - Grid item with photo + match badge
+	∙	client/components/organisms/LoadingRecipes.tsx - Elegant 4-second loading animation
+	∙	client/components/molecules/IngredientList.tsx - “You Have” / “Need to Buy” sections
+	∙	client/components/atoms/IngredientChip.tsx - Individual ingredient with cart icon
+
+Technical Implementation
+1. Navigation Setup
+Update client/navigation/MainStackNavigator.tsx:
+
+<Stack.Screen 
+  name="RecipeFeed" 
+  component={RecipeFeedScreen}
+  options={{ title: 'Recipes' }}
+/>
+<Stack.Screen 
+  name="RecipeDetail" 
+  component={RecipeDetailScreen}
+  options={{ title: '' }} // Hide title, show in content
+/>
+
+
+Update client/components/organisms/ItemDetailModal.tsx:
+
+// Add button
+<TouchableOpacity onPress={() => {
+  navigation.navigate('RecipeFeed', { itemId: item.id, itemName: item.name });
+  onClose();
+}}>
+  <Text>Find Recipes</Text>
+</TouchableOpacity>
+
+
+2. Backend API
+Create server/routes/recipes.ts:
+
+import { Router } from 'express';
+import { gemini } from '../replit_integrations/gemini';
+
+const router = Router();
+
+// GET /api/recipes/by-ingredient/:itemName
+router.get('/by-ingredient/:itemName', async (req, res) => {
+  try {
+    const { itemName } = req.params;
+    
+    // 1. Fetch from TheMealDB
+    const mealDbUrl = `https://www.themealdb.com/api/json/v1/1/filter.php?i=${encodeURIComponent(itemName)}`;
+    const response = await fetch(mealDbUrl);
+    const data = await response.json();
+    
+    if (!data.meals) {
+      return res.json({ success: true, data: { recipes: [] } });
+    }
+    
+    // 2. Get full recipe details (includes ingredients & instructions)
+    const recipes = await Promise.all(
+      data.meals.slice(0, 30).map(async (meal) => {
+        const detailUrl = `https://www.themealdb.com/api/json/v1/1/lookup.php?i=${meal.idMeal}`;
+        const detailResponse = await fetch(detailUrl);
+        const detailData = await detailResponse.json();
+        const fullMeal = detailData.meals[0];
+        
+        // Extract ingredients from strIngredient1-20
+        const ingredients = [];
+        for (let i = 1; i <= 20; i++) {
+          const ingredient = fullMeal[`strIngredient${i}`];
+          if (ingredient?.trim()) {
+            ingredients.push(ingredient.trim());
+          }
+        }
+        
+        return {
+          id: fullMeal.idMeal,
+          name: fullMeal.strMeal,
+          thumbnail: fullMeal.strMealThumb,
+          category: fullMeal.strCategory,
+          instructions: fullMeal.strInstructions,
+          ingredients
+        };
+      })
+    );
+    
+    // 3. Get user's pantry from request (passed as query param)
+    const userPantryJson = req.query.pantry as string;
+    const userPantry = JSON.parse(userPantryJson);
+    
+    // 4. Score with Gemini
+    const scoredRecipes = await scoreRecipesWithGemini(recipes, userPantry);
+    
+    // 5. Sort by match score
+    scoredRecipes.sort((a, b) => b.matchScore - a.matchScore);
+    
+    res.json({ success: true, data: { recipes: scoredRecipes } });
+    
+  } catch (error) {
+    console.error('Recipe fetch error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch recipes' });
+  }
+});
+
+// Gemini scoring function
+async function scoreRecipesWithGemini(recipes, userPantry) {
+  const pantryNames = userPantry.map(item => item.name);
+  
+  const prompt = `You are a cooking ingredient matcher. Match user's pantry items to recipe ingredients.
+
+USER'S PANTRY: ${pantryNames.join(', ')}
+
+RECIPES:
+${recipes.map((r, i) => `${i + 1}. ${r.name}: ${r.ingredients.join(', ')}`).join('\n')}
+
+For each recipe, return JSON with:
+- recipeId (1, 2, 3...)
+- matches: [{ recipeIngredient, pantryItem, confidence }]
+- missing: [ingredient names user doesn't have]
+
+Matching rules:
+- Exact match = 100 confidence
+- Substitutable (chicken thigh ≈ drumstick) = 70-90
+- Generic (chicken matches chicken breast) = 60-80
+- Different items (chicken ≠ chickpeas) = no match
+
+Return ONLY valid JSON:
+{"results": [{"recipeId": 1, "matches": [{"recipeIngredient": "chicken", "pantryItem": "chicken breast", "confidence": 85}], "missing": ["soy sauce"]}]}`;
+
+  const response = await gemini.generateContent({
+    prompt,
+    model: 'gemini-2.5-flash',
+    temperature: 0.3
+  });
+  
+  const results = JSON.parse(response.text);
+  
+  return recipes.map((recipe, index) => {
+    const scoreData = results.results.find(r => r.recipeId === index + 1);
+    const matchScore = (scoreData.matches.length / recipe.ingredients.length) * 100;
+    
+    return {
+      ...recipe,
+      matchScore: Math.round(matchScore * 10) / 10,
+      matchedIngredients: scoreData.matches,
+      missingIngredients: scoreData.missing,
+      stats: {
+        total: recipe.ingredients.length,
+        matched: scoreData.matches.length,
+        missing: scoreData.missing.length
+      }
+    };
+  });
+}
+
+export default router;
+
+
+Register route in server/index.ts:
+
+import recipesRouter from './routes/recipes';
+app.use('/api/recipes', recipesRouter);
+
+
+3. Frontend: Recipe Feed Screen
+Create client/screens/RecipeFeedScreen.tsx:
+
+import React from 'react';
+import { View, FlatList, StyleSheet } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
+import { useRoute } from '@react-navigation/native';
+import { useAppContext } from '../context/AppContext';
+import LoadingRecipes from '../components/organisms/LoadingRecipes';
+import RecipeCard from '../components/organisms/RecipeCard';
+
+export default function RecipeFeedScreen() {
+  const route = useRoute();
+  const { itemName } = route.params;
+  const { groceryItems } = useAppContext();
+  
+  const { data, isLoading } = useQuery({
+    queryKey: ['recipes', itemName],
+    queryFn: async () => {
+      const pantryJson = JSON.stringify(groceryItems);
+      const response = await fetch(
+        `/api/recipes/by-ingredient/${encodeURIComponent(itemName)}?pantry=${encodeURIComponent(pantryJson)}`
+      );
+      const result = await response.json();
+      return result.data.recipes;
+    },
+    staleTime: 1000 * 60 * 5 // 5 min cache
+  });
+  
+  if (isLoading) {
+    return <LoadingRecipes itemName={itemName} />;
+  }
+  
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={data}
+        numColumns={2}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => <RecipeCard recipe={item} />}
+        columnWrapperStyle={styles.row}
+        contentContainerStyle={styles.grid}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F5F1E8' },
+  grid: { padding: 12 },
+  row: { gap: 12, marginBottom: 12 }
+});
+
+
+4. Frontend: Recipe Card Component
+Create client/components/organisms/RecipeCard.tsx:
+
+import React from 'react';
+import { TouchableOpacity, Image, Text, View, StyleSheet } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+
+export default function RecipeCard({ recipe }) {
+  const navigation = useNavigation();
+  
+  const isFullMatch = recipe.matchScore === 100;
+  const badgeColor = recipe.matchScore >= 70 ? '#4CAF50' : '#FFA726';
+  const badgeText = isFullMatch 
+    ? '⭐ Ready!' 
+    : `✅ ${recipe.stats.matched}/${recipe.stats.total}`;
+  
+  return (
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => navigation.navigate('RecipeDetail', { recipe })}
+      activeOpacity={0.8}
+    >
+      <Image source={{ uri: recipe.thumbnail }} style={styles.image} />
+      <View style={styles.content}>
+        <Text style={styles.title} numberOfLines={2}>{recipe.name}</Text>
+        <View style={[styles.badge, { backgroundColor: badgeColor }]}>
+          <Text style={styles.badgeText}>{badgeText}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3
+  },
+  image: { width: '100%', height: 150 },
+  content: { padding: 12 },
+  title: { fontSize: 16, fontWeight: '600', marginBottom: 8 },
+  badge: { 
+    alignSelf: 'flex-start', 
+    paddingHorizontal: 8, 
+    paddingVertical: 4, 
+    borderRadius: 6 
+  },
+  badgeText: { color: 'white', fontSize: 12, fontWeight: '600' }
+});
+
+
+5. Frontend: Recipe Detail Screen
+Create client/screens/RecipeDetailScreen.tsx:
+
+import React, { useState } from 'react';
+import { View, ScrollView, Image, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useRoute } from '@react-navigation/native';
+import { useAppContext } from '../context/AppContext';
+import ConfirmationBanner from '../components/atoms/ConfirmationBanner';
+
+export default function RecipeDetailScreen() {
+  const route = useRoute();
+  const { recipe } = route.params;
+  const { addToShoppingList, shoppingList } = useAppContext();
+  const [showBanner, setShowBanner] = useState(false);
+  const [addedItems, setAddedItems] = useState(new Set());
+  
+  const handleAddToList = (ingredient) => {
+    addToShoppingList({
+      name: ingredient,
+      source: { type: 'recipe', recipeName: recipe.name }
+    });
+    setAddedItems(prev => new Set([...prev, ingredient]));
+    setShowBanner(true);
+    setTimeout(() => setShowBanner(false), 2000);
+  };
+  
+  const isInList = (ingredient) => {
+    return shoppingList.some(item => item.name === ingredient) || addedItems.has(ingredient);
+  };
+  
+  return (
+    <View style={styles.container}>
+      {showBanner && <ConfirmationBanner message="Added to shopping list ✓" />}
+      
+      <ScrollView>
+        <Image source={{ uri: recipe.thumbnail }} style={styles.hero} />
+        
+        <View style={styles.content}>
+          <Text style={styles.title}>{recipe.name}</Text>
+          <Text style={styles.category}>{recipe.category}</Text>
+          
+          {/* You Have Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>✅ YOU HAVE ({recipe.stats.matched})</Text>
+            {recipe.matchedIngredients.map((match, i) => (
+              <View key={i} style={styles.ingredientRow}>
+                <Text style={styles.ingredientText}>{match.recipeIngredient}</Text>
+                <Text style={styles.checkmark}>✓</Text>
+              </View>
+            ))}
+          </View>
+          
+          {/* Need to Buy Section */}
+          {recipe.missingIngredients.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>🛒 NEED TO BUY ({recipe.stats.missing})</Text>
+              {recipe.missingIngredients.map((ingredient, i) => (
+                <View key={i} style={styles.ingredientRow}>
+                  <Text style={styles.ingredientText}>{ingredient}</Text>
+                  <TouchableOpacity 
+                    onPress={() => handleAddToList(ingredient)}
+                    disabled={isInList(ingredient)}
+                  >
+                    <Text style={styles.cartIcon}>
+                      {isInList(ingredient) ? '✓' : '🛒'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+          
+          {/* Instructions */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>INSTRUCTIONS</Text>
+            <Text style={styles.instructions}>{recipe.instructions}</Text>
+          </View>
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F5F1E8' },
+  hero: { width: '100%', height: 300 },
+  content: { padding: 20 },
+  title: { fontSize: 28, fontFamily: 'PlayfairDisplay-Bold', marginBottom: 8 },
+  category: { fontSize: 16, color: '#666', marginBottom: 24 },
+  section: { marginBottom: 24 },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#333', marginBottom: 12 },
+  ingredientRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    paddingVertical: 12, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#E0E0E0' 
+  },
+  ingredientText: { fontSize: 16 },
+  checkmark: { fontSize: 20, color: '#4CAF50' },
+  cartIcon: { fontSize: 24 },
+  instructions: { fontSize: 14, lineHeight: 22, color: '#333' }
+});
+
+
+6. Update AppContext for Shopping List
+Update client/context/AppContext.tsx:
+
+// Add to context interface
+interface ShoppingListItem {
+  id: string;
+  name: string;
+  isPurchased: boolean;
+  source?: {
+    type: 'recipe' | 'manual';
+    recipeName?: string;
+  };
+}
+
+// Add state
+const [pendingCartCount, setPendingCartCount] = useState(0);
+
+// Add method
+const addToShoppingList = (item) => {
+  // Check for duplicates
+  const exists = shoppingList.some(i => i.name === item.name);
+  if (exists) return;
+  
+  const newItem = {
+    id: Date.now().toString(),
+    name: item.name,
+    isPurchased: false,
+    source: item.source
+  };
+  
+  setShoppingList([...shoppingList, newItem]);
+  setPendingCartCount(prev => prev + 1);
+  
+  // Save to AsyncStorage
+  AsyncStorage.setItem('shopping_list', JSON.stringify([...shoppingList, newItem]));
+};
+
+// Export in context value
+return (
+  <AppContext.Provider value={{ 
+    ...existing,
+    addToShoppingList,
+    pendingCartCount,
+    setPendingCartCount 
+  }}>
+
+
+7. Add Badge to Shopping List Tab
+Update client/navigation/MainTabNavigator.tsx:
+
+const { pendingCartCount, setPendingCartCount } = useAppContext();
+
+<Tab.Screen 
+  name="List"
+  component={ShoppingListScreen}
+  options={{
+    tabBarBadge: pendingCartCount > 0 ? pendingCartCount : undefined,
+    tabBarBadgeStyle: { backgroundColor: '#FF6B6B' }
+  }}
+  listeners={{
+    tabPress: () => setPendingCartCount(0) // Clear badge on visit
+  }}
+/>
+
+
+8. Loading Animation Component
+Create client/components/organisms/LoadingRecipes.tsx:
+
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, Animated } from 'react-native';
+
+export default function LoadingRecipes({ itemName }) {
+  const progress = new Animated.Value(0);
+  
+  useEffect(() => {
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: 4000,
+      useNativeDriver: false
+    }).start();
+  }, []);
+  
+  const width = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', '100%']
+  });
+  
+  return (
+    <View style={styles.container}>
+      <Text style={styles.emoji}>🥚 → 🍳</Text>
+      <Text style={styles.title}>Finding recipes with</Text>
+      <Text style={styles.itemName}>{itemName}</Text>
+      
+      <View style={styles.progressBar}>
+        <Animated.View style={[styles.progressFill, { width }]} />
+      </View>
+      
+      <Text style={styles.status}>Checking your pantry...</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { 
+    flex: 1, 
+    backgroundColor: '#F5F1E8', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    padding: 20 
+  },
+  emoji: { fontSize: 48, marginBottom: 24 },
+  title: { fontSize: 18, color: '#666', marginBottom: 8 },
+  itemName: { fontSize: 24, fontFamily: 'PlayfairDisplay-Bold', marginBottom: 32 },
+  progressBar: { 
+    width: '80%', 
+    height: 4, 
+    backgroundColor: '#E8DCC8', 
+    borderRadius: 2, 
+    overflow: 'hidden',
+    marginBottom: 16
+  },
+  progressFill: { height: '100%', backgroundColor: '#C9A86A' },
+  status: { fontSize: 14, color: '#999' }
+});
+
+
+Data Types
+
+// shared/types.ts (create this file)
+
+export interface Recipe {
+  id: string;
+  name: string;
+  thumbnail: string;
+  category: string;
+  instructions: string;
+  ingredients: string[];
+  matchScore: number;
+  matchedIngredients: MatchedIngredient[];
+  missingIngredients: string[];
+  stats: {
+    total: number;
+    matched: number;
+    missing: number;
+  };
+}
+
+export interface MatchedIngredient {
+  recipeIngredient: string;
+  pantryItem: string;
+  confidence: number;
+}
+
+
+Testing Checklist
+	∙	Recipe feed loads in <5 seconds
+	∙	Recipes sorted by match score (highest first)
+	∙	100% match shows gold star badge
+	∙	Tapping recipe opens detail screen
+	∙	Cart icon adds to shopping list
+	∙	Icon changes to checkmark after adding
+	∙	Shopping list badge shows count
+	∙	Badge clears when visiting shopping list
+	∙	No duplicate items in shopping list
+	∙	Loading animation displays for 4 seconds
+	∙	Empty state if no recipes found
+	∙	Error handling if API fails
+
+Environment Variables
+No new variables needed - uses existing:
+	∙	AI_INTEGRATIONS_GEMINI_API_KEY
+	∙	AI_INTEGRATIONS_GEMINI_BASE_URL
+
+Ready to implement! Start with backend API, then RecipeFeedScreen, then RecipeDetailScreen.​​​​​​​​​​​​​​​​
