@@ -73,12 +73,18 @@ export default function CookingCompleteScreen() {
 
     setShowBanner(true);
     setTimeout(() => {
-      navigation.navigate("Main");
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "Main" }],
+      });
     }, 1500);
   };
 
   const handleSkip = () => {
-    navigation.navigate("Main");
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "Main" }],
+    });
   };
 
   return (
