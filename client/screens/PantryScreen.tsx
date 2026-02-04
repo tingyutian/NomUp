@@ -11,7 +11,6 @@ import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { SwipeableGroceryItem } from "@/components/molecules/SwipeableGroceryItem";
 import { ExpiringCard } from "@/components/molecules/ExpiringCard";
-import { ExpiringItemsBanner } from "@/components/molecules/ExpiringItemsBanner";
 import { ItemDetailModal } from "@/components/organisms/ItemDetailModal";
 import { DeleteConfirmModal } from "@/components/organisms/DeleteConfirmModal";
 import { AddItemModal } from "@/components/organisms/AddItemModal";
@@ -67,19 +66,12 @@ export default function PantryScreen({ navigation }: Props) {
   
   const hasAnimatedRef = useRef(false);
 
-  const allExpiringItems = useMemo(() => {
+  const expiringItems = useMemo(() => {
     return groceries
       .filter((item) => item.expiresIn <= 5)
-      .sort((a, b) => a.expiresIn - b.expiresIn);
+      .sort((a, b) => a.expiresIn - b.expiresIn)
+      .slice(0, 5);
   }, [groceries]);
-
-  const expiringItems = useMemo(() => {
-    return allExpiringItems.slice(0, 5);
-  }, [allExpiringItems]);
-
-  const handleFindRecipes = () => {
-    rootNavigation.navigate("RecipeSuggestion");
-  };
 
   const filteredAndSortedGroceries = useMemo(() => {
     let filtered = groceries.filter((item) => item.storageLocation === activeTab);
@@ -228,14 +220,6 @@ export default function PantryScreen({ navigation }: Props) {
     
     return (
     <>
-      {allExpiringItems.length >= 2 ? (
-        <ExpiringItemsBanner
-          expiringCount={allExpiringItems.length}
-          onPress={handleFindRecipes}
-          testID="banner-expiring-items"
-        />
-      ) : null}
-
       {expiringItems.length > 0 ? (
         <Animated.View entering={shouldAnimate ? FadeInDown.delay(100) : undefined}>
           <View style={styles.sectionHeader}>
