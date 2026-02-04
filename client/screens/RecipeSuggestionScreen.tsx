@@ -110,15 +110,12 @@ export default function RecipeSuggestionScreen() {
         daysUntilExpiration: item.expiresIn,
       }));
 
-      const response = await apiRequest("/api/generate-recipe", {
-        method: "POST",
-        body: JSON.stringify({
-          expiringIngredients,
-          pantryItems,
-        }),
+      const response = await apiRequest("POST", "/api/generate-recipe", {
+        expiringIngredients,
+        pantryItems,
       });
 
-      return response;
+      return response.json();
     },
     onSuccess: (data) => {
       if (data.recipes && data.recipes.length > 0) {

@@ -467,7 +467,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             quantity: 1,
             unit: "units",
             daysUntilExpiration: 3,
-          }], 30, userPantry);
+          }], userPantry, 30);
           
           if (fallbackRecipes.length > 0) {
             return res.json({ recipes: fallbackRecipes, source: "ai" });
