@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "node:http";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
@@ -9,6 +9,92 @@ const ai = new GoogleGenAI({
     baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL,
   },
 });
+
+const GEMINI_MODEL = "gemini-3-flash";
+
+interface ExpiringIngredient {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  daysUntilExpiration: number;
+}
+
+interface GeneratedRecipe {
+  id: string;
+  title: string;
+  totalTime: number;
+  servings: number;
+  matchScore: number;
+  thumbnail?: string;
+  usedIngredients: Array<{
+    groceryItemId: string;
+    name: string;
+    amount: string;
+    prepNotes?: string;
+  }>;
+  missingIngredients: Array<{
+    name: string;
+    amount: string;
+  }>;
+  steps: Array<{
+    stepNumber: number;
+    instruction: string;
+    duration?: number;
+    temperature?: string;
+  }>;
+}
+
+const recipeSchema = {
+  type: Type.ARRAY,
+  items: {
+    type: Type.OBJECT,
+    properties: {
+      title: { type: Type.STRING },
+      totalTime: { type: Type.NUMBER },
+      servings: { type: Type.NUMBER },
+      matchScore: { type: Type.NUMBER },
+      usedIngredients: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            groceryItemId: { type: Type.STRING },
+            name: { type: Type.STRING },
+            amount: { type: Type.STRING },
+            prepNotes: { type: Type.STRING },
+          },
+          required: ["groceryItemId", "name", "amount"],
+        },
+      },
+      missingIngredients: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            name: { type: Type.STRING },
+            amount: { type: Type.STRING },
+          },
+          required: ["name", "amount"],
+        },
+      },
+      steps: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            stepNumber: { type: Type.NUMBER },
+            instruction: { type: Type.STRING },
+            duration: { type: Type.NUMBER },
+            temperature: { type: Type.STRING },
+          },
+          required: ["stepNumber", "instruction"],
+        },
+      },
+    },
+    required: ["title", "totalTime", "servings", "matchScore", "usedIngredients", "missingIngredients", "steps"],
+  },
+};
 
 interface ScannedItem {
   id: string;
@@ -53,6 +139,77 @@ function getDefaultExpiration(category: string): number {
   return categoryExpirationDefaults[category.toLowerCase()] || 7;
 }
 
+async function generateRecipesWithGemini(
+  expiringIngredients: ExpiringIngredient[],
+  maxCookingTime: number,
+  pantryItems: Array<{ name: string; category: string }>
+): Promise<any[]> {
+  const ingredientList = expiringIngredients
+    .map(i => `- ${i.name} (${i.quantity} ${i.unit}, expires in ${i.daysUntilExpiration} days)`)
+    .join("\n");
+
+  const pantryList = pantryItems.map(p => p.name).join(", ");
+
+  const prompt = `Generate exactly 2 recipes using these expiring ingredients. Prioritize items expiring soonest.
+
+EXPIRING INGREDIENTS (MUST USE):
+${ingredientList}
+
+OTHER PANTRY ITEMS AVAILABLE:
+${pantryList}
+
+CONSTRAINTS:
+- Maximum cooking time: ${maxCookingTime} minutes
+- Skill level: beginner to intermediate
+- Minimize additional ingredients needed
+- Provide clear step-by-step instructions
+
+For each recipe, provide:
+- title: recipe name
+- totalTime: total cooking time in minutes
+- servings: number of servings
+- matchScore: percentage (0-100) of expiring ingredients used
+- usedIngredients: array of ingredients from the expiring list with groceryItemId, name, amount, and optional prepNotes
+- missingIngredients: array of additional ingredients needed with name and amount
+- steps: array of cooking steps with stepNumber, instruction, optional duration in minutes, and optional temperature
+
+Return the recipes as a JSON array.`;
+
+  const response = await ai.models.generateContent({
+    model: GEMINI_MODEL,
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: recipeSchema,
+    },
+  });
+
+  const text = response.text || "";
+  let recipes: any[] = [];
+
+  try {
+    recipes = JSON.parse(text);
+    recipes = recipes.map((recipe: any, index: number) => ({
+      ...recipe,
+      id: `ai-${Date.now()}-${index}`,
+      thumbnail: null,
+      source: "ai",
+      ingredients: recipe.usedIngredients.map((i: any) => i.name),
+      matchedIngredients: recipe.usedIngredients.map((i: any) => i.name),
+      stats: {
+        total: recipe.usedIngredients.length + recipe.missingIngredients.length,
+        matched: recipe.usedIngredients.length,
+        missing: recipe.missingIngredients.length,
+      },
+    }));
+  } catch (parseError) {
+    console.error("Error parsing Gemini recipe response:", parseError);
+    recipes = [];
+  }
+
+  return recipes;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/scan-receipt", async (req, res) => {
     try {
@@ -83,7 +240,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       If you cannot identify any items, return an empty array: []`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: GEMINI_MODEL,
         contents: [
           {
             role: "user",
@@ -152,7 +309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       If you cannot identify any ingredients, return an empty array: []`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: GEMINI_MODEL,
         contents: [
           {
             role: "user",
@@ -191,6 +348,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
+  // Generate recipes from expiring ingredients using Gemini 3
+  app.post("/api/generate-recipe", async (req, res) => {
+    try {
+      const { expiringIngredients, maxCookingTime = 30, pantryItems = [] } = req.body;
+
+      if (!expiringIngredients || !Array.isArray(expiringIngredients) || expiringIngredients.length === 0) {
+        return res.status(400).json({ error: "At least one expiring ingredient is required" });
+      }
+
+      console.log(`Generating recipes for ${expiringIngredients.length} expiring ingredients with ${maxCookingTime}min max time...`);
+
+      const recipes = await generateRecipesWithGemini(
+        expiringIngredients,
+        maxCookingTime,
+        pantryItems
+      );
+
+      res.json({ recipes, source: "ai" });
+    } catch (error) {
+      console.error("Error generating recipes:", error);
+      res.status(500).json({ error: "Failed to generate recipes" });
+    }
   });
 
   // Recipe discovery endpoints
@@ -253,7 +434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const simplifyPrompt = `Simplify this grocery item to a basic ingredient for recipe search: "${itemName}". Return ONLY the single-word base ingredient (e.g., "Boneless Chicken Breast" → "chicken"). One word only.`;
           const simplifyResponse = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: GEMINI_MODEL,
             contents: [{ role: "user", parts: [{ text: simplifyPrompt }] }],
           });
           const simplifiedName = simplifyResponse.text?.trim().toLowerCase();
@@ -273,6 +454,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const mealData = await mealResponse.json();
       
       if (!mealData.meals) {
+        // Fallback to Gemini-generated recipes when TheMealDB has no results
+        console.log(`No recipes in TheMealDB for "${searchTerm}", falling back to Gemini...`);
+        try {
+          const fallbackRecipes = await generateRecipesWithGemini([{
+            id: "fallback",
+            name: itemName,
+            quantity: 1,
+            unit: "units",
+            daysUntilExpiration: 3,
+          }], 30, userPantry);
+          
+          if (fallbackRecipes.length > 0) {
+            return res.json({ recipes: fallbackRecipes, source: "ai" });
+          }
+        } catch (geminiError) {
+          console.error("Gemini fallback failed:", geminiError);
+        }
         return res.json({ recipes: [] });
       }
 
