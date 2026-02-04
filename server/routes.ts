@@ -141,14 +141,18 @@ function getDefaultExpiration(category: string): number {
 
 async function generateRecipesWithGemini(
   expiringIngredients: ExpiringIngredient[],
-  maxCookingTime: number,
-  pantryItems: Array<{ name: string; category: string }>
+  pantryItems: Array<{ name: string; category: string }>,
+  maxCookingTime?: number
 ): Promise<any[]> {
   const ingredientList = expiringIngredients
     .map(i => `- ${i.name} (${i.quantity} ${i.unit}, expires in ${i.daysUntilExpiration} days)`)
     .join("\n");
 
   const pantryList = pantryItems.map(p => p.name).join(", ");
+
+  const timeConstraint = maxCookingTime 
+    ? `- Maximum cooking time: ${maxCookingTime} minutes` 
+    : "- Cooking time: reasonable for home cooking (under 60 minutes preferred)";
 
   const prompt = `Generate exactly 2 recipes using these expiring ingredients. Prioritize items expiring soonest.
 
@@ -159,7 +163,7 @@ OTHER PANTRY ITEMS AVAILABLE:
 ${pantryList}
 
 CONSTRAINTS:
-- Maximum cooking time: ${maxCookingTime} minutes
+${timeConstraint}
 - Skill level: beginner to intermediate
 - Minimize additional ingredients needed
 - Provide clear step-by-step instructions
@@ -353,18 +357,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Generate recipes from expiring ingredients using Gemini 3
   app.post("/api/generate-recipe", async (req, res) => {
     try {
-      const { expiringIngredients, maxCookingTime = 30, pantryItems = [] } = req.body;
+      const { expiringIngredients, maxCookingTime, pantryItems = [] } = req.body;
 
       if (!expiringIngredients || !Array.isArray(expiringIngredients) || expiringIngredients.length === 0) {
         return res.status(400).json({ error: "At least one expiring ingredient is required" });
       }
 
-      console.log(`Generating recipes for ${expiringIngredients.length} expiring ingredients with ${maxCookingTime}min max time...`);
+      console.log(`Generating recipes for ${expiringIngredients.length} expiring ingredients...`);
 
       const recipes = await generateRecipesWithGemini(
         expiringIngredients,
-        maxCookingTime,
-        pantryItems
+        pantryItems,
+        maxCookingTime
       );
 
       res.json({ recipes, source: "ai" });

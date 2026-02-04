@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { View, StyleSheet, ScrollView, Pressable, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -24,11 +24,10 @@ export default function AIRecipeDetailScreen() {
   const insets = useSafeAreaInsets();
 
   const { recipe, selectedIngredients } = route.params;
-  const [currentStep, setCurrentStep] = useState(0);
 
   const handleStartCooking = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    navigation.navigate("CookingComplete", { recipe, selectedIngredients });
+    navigation.navigate("CookingMode", { recipe, selectedIngredients });
   };
 
   return (
@@ -157,7 +156,7 @@ export default function AIRecipeDetailScreen() {
         >
           <Feather name="play" size={20} color={theme.buttonText} />
           <ThemedText type="bodyMedium" style={{ color: theme.buttonText }}>
-            I Made This Recipe
+            Start Cooking
           </ThemedText>
         </Pressable>
       </View>

@@ -9,6 +9,7 @@ import RecipeDetailScreen from "@/screens/RecipeDetailScreen";
 import RecipeSuggestionScreen from "@/screens/RecipeSuggestionScreen";
 import RecipeResultsScreen from "@/screens/RecipeResultsScreen";
 import AIRecipeDetailScreen from "@/screens/AIRecipeDetailScreen";
+import CookingModeScreen from "@/screens/CookingModeScreen";
 import CookingCompleteScreen from "@/screens/CookingCompleteScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { useApp } from "@/context/AppContext";
@@ -72,6 +73,7 @@ export type RootStackParamList = {
   RecipeSuggestion: undefined;
   RecipeResults: { recipes: GeneratedRecipe[]; selectedIngredients: SelectedIngredient[] };
   AIRecipeDetail: { recipe: GeneratedRecipe; selectedIngredients: SelectedIngredient[] };
+  CookingMode: { recipe: GeneratedRecipe; selectedIngredients: SelectedIngredient[] };
   CookingComplete: { recipe: GeneratedRecipe; selectedIngredients: SelectedIngredient[] };
 };
 
@@ -150,6 +152,14 @@ export default function RootStackNavigator() {
         component={AIRecipeDetailScreen}
         options={{
           headerTitle: "",
+        }}
+      />
+      <Stack.Screen
+        name="CookingMode"
+        component={CookingModeScreen}
+        options={{
+          headerShown: false,
+          presentation: "fullScreenModal",
         }}
       />
       <Stack.Screen

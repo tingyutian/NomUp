@@ -9,7 +9,6 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useMutation } from "@tanstack/react-query";
 import { ThemedText } from "@/components/ThemedText";
-import { TimeSelector } from "@/components/atoms/TimeSelector";
 import { useTheme } from "@/hooks/useTheme";
 import { useApp, GroceryItem } from "@/context/AppContext";
 import { getApiUrl, apiRequest } from "@/lib/query-client";
@@ -85,7 +84,6 @@ export default function RecipeSuggestionScreen() {
   const insets = useSafeAreaInsets();
   const { groceries } = useApp();
 
-  const [cookingTime, setCookingTime] = useState(30);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const expiringItems = useMemo(() => {
@@ -116,7 +114,6 @@ export default function RecipeSuggestionScreen() {
         method: "POST",
         body: JSON.stringify({
           expiringIngredients,
-          maxCookingTime: cookingTime,
           pantryItems,
         }),
       });
@@ -165,17 +162,13 @@ export default function RecipeSuggestionScreen() {
         <ThemedText type="h2" style={styles.title}>
           What would you like to cook?
         </ThemedText>
-        <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.xl }}>
+        <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.lg }}>
           Select ingredients you want to use up
         </ThemedText>
       </Animated.View>
 
-      <Animated.View entering={FadeInDown.delay(100).duration(300)}>
-        <TimeSelector value={cookingTime} onValueChange={setCookingTime} testID="time-selector" />
-      </Animated.View>
-
       <Animated.View
-        entering={FadeInDown.delay(200).duration(300)}
+        entering={FadeInDown.delay(100).duration(300)}
         style={styles.sectionHeader}
       >
         <ThemedText type="h4">Expiring Ingredients</ThemedText>

@@ -1,5 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  requestNotificationPermission,
+  hasRequestedPermission,
+  markPermissionRequested,
+  scheduleNotificationsForItems,
+  scheduleExpiringItemNotification,
+  cancelItemNotification,
+} from "@/services/notifications";
 
 export interface GroceryItem {
   id: string;
@@ -113,8 +121,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const addGroceries = async (items: GroceryItem[]) => {
+    const isFirstAddition = groceries.length === 0;
     const newGroceries = [...groceries, ...items];
     await saveGroceries(newGroceries);
+
+    if (isFirstAddition) {
+      const alreadyRequested = await hasRequestedPermission();
+      if (!alreadyRequested) {
+        await markPermissionRequested();
+        await requestNotificationPermission();
+      }
+    }
+
+    for (const item of items) {
+      if (item.expiresIn > 0 && item.expiresIn <= 5) {
+        await scheduleExpiringItemNotification(item.name, item.expiresIn, item.id);
+      }
+    }
   };
 
   const updateGrocery = async (id: string, updates: Partial<GroceryItem>) => {
@@ -127,6 +150,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const deleteGrocery = async (id: string) => {
     const filtered = groceries.filter(item => item.id !== id);
     await saveGroceries(filtered);
+    await cancelItemNotification(id);
   };
 
   const useGrocery = async (id: string, amount: number) => {
