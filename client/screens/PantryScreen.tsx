@@ -3,12 +3,15 @@ import { View, StyleSheet, FlatList, Pressable, TextInput, ScrollView, Modal } f
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { SwipeableGroceryItem } from "@/components/molecules/SwipeableGroceryItem";
 import { ExpiringCard } from "@/components/molecules/ExpiringCard";
+import { ExpiringItemsBanner } from "@/components/molecules/ExpiringItemsBanner";
 import { ItemDetailModal } from "@/components/organisms/ItemDetailModal";
 import { DeleteConfirmModal } from "@/components/organisms/DeleteConfirmModal";
 import { AddItemModal } from "@/components/organisms/AddItemModal";
@@ -20,6 +23,7 @@ import { useApp, GroceryItem } from "@/context/AppContext";
 import { BorderRadius, Spacing, Colors } from "@/constants/theme";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { PantryStackParamList } from "@/navigation/PantryStackNavigator";
+import type { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 type Props = NativeStackScreenProps<PantryStackParamList, "PantryMain">;
 
@@ -28,11 +32,14 @@ type SortOption = "expiration" | "category" | "recent";
 
 const SEARCH_BAR_HEIGHT = 52;
 
+type RootNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
 export default function PantryScreen({ navigation }: Props) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
+  const rootNavigation = useNavigation<RootNavigationProp>();
   const { 
     groceries, 
     addGroceries, 
@@ -60,12 +67,19 @@ export default function PantryScreen({ navigation }: Props) {
   
   const hasAnimatedRef = useRef(false);
 
-  const expiringItems = useMemo(() => {
+  const allExpiringItems = useMemo(() => {
     return groceries
       .filter((item) => item.expiresIn <= 5)
-      .sort((a, b) => a.expiresIn - b.expiresIn)
-      .slice(0, 5);
+      .sort((a, b) => a.expiresIn - b.expiresIn);
   }, [groceries]);
+
+  const expiringItems = useMemo(() => {
+    return allExpiringItems.slice(0, 5);
+  }, [allExpiringItems]);
+
+  const handleFindRecipes = () => {
+    rootNavigation.navigate("RecipeSuggestion");
+  };
 
   const filteredAndSortedGroceries = useMemo(() => {
     let filtered = groceries.filter((item) => item.storageLocation === activeTab);
@@ -214,6 +228,14 @@ export default function PantryScreen({ navigation }: Props) {
     
     return (
     <>
+      {allExpiringItems.length >= 2 ? (
+        <ExpiringItemsBanner
+          expiringCount={allExpiringItems.length}
+          onPress={handleFindRecipes}
+          testID="banner-expiring-items"
+        />
+      ) : null}
+
       {expiringItems.length > 0 ? (
         <Animated.View entering={shouldAnimate ? FadeInDown.delay(100) : undefined}>
           <View style={styles.sectionHeader}>

@@ -6,6 +6,10 @@ import ScanReceiptScreen from "@/screens/ScanReceiptScreen";
 import ConfirmItemsScreen from "@/screens/ConfirmItemsScreen";
 import RecipeFeedScreen from "@/screens/RecipeFeedScreen";
 import RecipeDetailScreen from "@/screens/RecipeDetailScreen";
+import RecipeSuggestionScreen from "@/screens/RecipeSuggestionScreen";
+import RecipeResultsScreen from "@/screens/RecipeResultsScreen";
+import AIRecipeDetailScreen from "@/screens/AIRecipeDetailScreen";
+import CookingCompleteScreen from "@/screens/CookingCompleteScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { useApp } from "@/context/AppContext";
 import { Colors } from "@/constants/theme";
@@ -27,6 +31,37 @@ export interface ScoredRecipe {
   };
 }
 
+export interface GeneratedRecipe {
+  id: string;
+  title: string;
+  totalTime: number;
+  servings: number;
+  matchScore: number;
+  thumbnail?: string;
+  source: "ai";
+  usedIngredients: Array<{
+    groceryItemId: string;
+    name: string;
+    amount: string;
+    prepNotes?: string;
+  }>;
+  missingIngredients: Array<{
+    name: string;
+    amount: string;
+  }>;
+  steps: Array<{
+    stepNumber: number;
+    instruction: string;
+    duration?: number;
+    temperature?: string;
+  }>;
+}
+
+export interface SelectedIngredient {
+  id: string;
+  name: string;
+}
+
 export type RootStackParamList = {
   Welcome: undefined;
   Main: undefined;
@@ -34,6 +69,10 @@ export type RootStackParamList = {
   ConfirmItems: { imageBase64: string };
   RecipeFeed: { itemId: string; itemName: string };
   RecipeDetail: { recipe: ScoredRecipe };
+  RecipeSuggestion: undefined;
+  RecipeResults: { recipes: GeneratedRecipe[]; selectedIngredients: SelectedIngredient[] };
+  AIRecipeDetail: { recipe: GeneratedRecipe; selectedIngredients: SelectedIngredient[] };
+  CookingComplete: { recipe: GeneratedRecipe; selectedIngredients: SelectedIngredient[] };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -90,6 +129,34 @@ export default function RootStackNavigator() {
         component={RecipeDetailScreen}
         options={{
           headerTitle: "",
+        }}
+      />
+      <Stack.Screen
+        name="RecipeSuggestion"
+        component={RecipeSuggestionScreen}
+        options={{
+          headerTitle: "Recipe Ideas",
+        }}
+      />
+      <Stack.Screen
+        name="RecipeResults"
+        component={RecipeResultsScreen}
+        options={{
+          headerTitle: "Recipe Ideas",
+        }}
+      />
+      <Stack.Screen
+        name="AIRecipeDetail"
+        component={AIRecipeDetailScreen}
+        options={{
+          headerTitle: "",
+        }}
+      />
+      <Stack.Screen
+        name="CookingComplete"
+        component={CookingCompleteScreen}
+        options={{
+          headerTitle: "Log Ingredients",
         }}
       />
     </Stack.Navigator>
