@@ -10,10 +10,9 @@ import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
 import { ShoppingListItemCard } from "@/components/molecules/ShoppingListItem";
 import { AddItemModal } from "@/components/organisms/AddItemModal";
-import { InstacartModal } from "@/components/organisms/InstacartModal";
 import { useTheme } from "@/hooks/useTheme";
 import { useApp } from "@/context/AppContext";
-import { BorderRadius, Spacing, Colors } from "@/constants/theme";
+import { BorderRadius, Spacing } from "@/constants/theme";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { ShoppingStackParamList } from "@/navigation/ShoppingStackNavigator";
 
@@ -29,12 +28,10 @@ export default function ShoppingListScreen({ navigation }: Props) {
     addToShoppingList,
     removeFromShoppingList,
     toggleShoppingListItem,
-    clearShoppingList,
     groceries,
   } = useApp();
 
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showInstacartModal, setShowInstacartModal] = useState(false);
   const [showRecentItems, setShowRecentItems] = useState(false);
 
   const recentlyUsedItems = useMemo(() => {
@@ -66,10 +63,6 @@ export default function ShoppingListScreen({ navigation }: Props) {
     });
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setShowRecentItems(false);
-  };
-
-  const handleInstacartComplete = async () => {
-    await clearShoppingList();
   };
 
   const renderEmptyState = () => (
@@ -188,38 +181,11 @@ export default function ShoppingListScreen({ navigation }: Props) {
         )}
       </ScrollView>
 
-      {shoppingList.length > 0 ? (
-        <Animated.View
-          entering={FadeInDown.delay(500)}
-          style={[
-            styles.footer,
-            {
-              backgroundColor: theme.backgroundDefault,
-              paddingBottom: insets.bottom + tabBarHeight + Spacing.lg,
-            },
-          ]}
-        >
-          <Button
-            onPress={() => setShowInstacartModal(true)}
-            style={styles.instacartButton}
-          >
-            Add to Instacart
-          </Button>
-        </Animated.View>
-      ) : null}
-
       <AddItemModal
         visible={showAddModal}
         onClose={() => setShowAddModal(false)}
         onAdd={handleAddItem}
         mode="shopping"
-      />
-
-      <InstacartModal
-        visible={showInstacartModal}
-        onClose={() => setShowInstacartModal(false)}
-        items={shoppingList}
-        onComplete={handleInstacartComplete}
       />
     </View>
   );
@@ -281,17 +247,5 @@ const styles = StyleSheet.create({
   addFirstButton: {
     marginTop: Spacing.xl,
     paddingHorizontal: Spacing["3xl"],
-  },
-  footer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: Spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.divider,
-  },
-  instacartButton: {
-    backgroundColor: Colors.light.text,
   },
 });
