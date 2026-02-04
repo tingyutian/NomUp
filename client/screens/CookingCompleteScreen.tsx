@@ -139,13 +139,13 @@ export default function CookingCompleteScreen() {
               >
                 <View style={[styles.ingredientCard, { backgroundColor: theme.backgroundDefault }]}>
                   <View style={styles.ingredientHeader}>
-                    <ThemedText type="bodyMedium">{item.name}</ThemedText>
+                    <ThemedText type="bodyMedium" style={styles.ingredientName}>{item.name}</ThemedText>
                     {item.grocery ? (
-                      <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                      <ThemedText type="small" style={styles.ingredientStatus}>
                         {item.grocery.quantity} {item.grocery.unit} in pantry
                       </ThemedText>
                     ) : (
-                      <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                      <ThemedText type="small" style={[styles.ingredientStatus, { color: theme.textSecondary }]}>
                         Not in pantry
                       </ThemedText>
                     )}
@@ -238,8 +238,16 @@ const styles = StyleSheet.create({
   ingredientHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginBottom: Spacing.md,
+    gap: Spacing.md,
+  },
+  ingredientName: {
+    flex: 1,
+    flexShrink: 1,
+  },
+  ingredientStatus: {
+    flexShrink: 0,
   },
   footer: {
     position: "absolute",
