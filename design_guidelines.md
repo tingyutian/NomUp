@@ -2,7 +2,7 @@
 
 ## Brand Identity
 
-**Purpose**: NomUp helps users prevent food waste by tracking groceries, managing expiration dates, and simplifying shopping through AI-powered receipt scanning and Instacart integration.
+**Purpose**: NomUp helps users prevent food waste by tracking groceries, managing expiration dates, and simplifying shopping through AI-powered receipt scanning.
 
 **Personality**: Warm, approachable, and refined. The app feels like a thoughtful kitchen companion - elegant enough to respect the user's time, friendly enough to reduce anxiety around food waste.
 
@@ -55,7 +55,7 @@
 **Navigation Stacks:**
 1. **Home Stack**: Dashboard → Item Detail → Edit Item
 2. **Add Stack**: Scan Receipt → Confirm Items → Set Expiration → Success
-3. **Shopping Stack**: Shopping List → Add Items Modal → Instacart Handoff
+3. **Shopping Stack**: Shopping List → Add Items Modal
 4. **Profile Stack**: Profile → Settings → Notifications
 
 ## Screen Specifications
@@ -102,10 +102,9 @@
   - Bottom: "Update Inventory" button
 
 ### Shopping List
-- **Header**: "Shopping List" (Playfair Display), right: "Add to Instacart" button
+- **Header**: "Shopping List" (Playfair Display)
 - **Layout**: Scrollable list with sections: "Recently Used" and "Manual Items"
 - **Content**: Item cards with checkbox, name, quantity, swipe-to-delete
-- **Instacart Modal**: Popup asking "Prefer organic?" with two buttons: "Yes, organic" | "No preference"
 - **Safe Area**: Bottom: tabBarHeight + 16px
 
 ## Visual Design System

@@ -8,7 +8,7 @@ Core features:
 - **Receipt Scanning**: AI-powered grocery receipt analysis using Gemini with automatic duplicate detection (merges items with same name, combines quantities)
 - **Pantry Management**: Track groceries across fridge, freezer, and pantry locations with sort options (Expiration, Category, Recent)
 - **Expiration Tracking**: Visual alerts for items expiring soon
-- **Shopping Lists**: Manage shopping lists with Instacart integration
+- **Shopping Lists**: Manage shopping lists
 - **Consumption Logging**: Track food usage directly from item detail modals
 - **Swipe-to-Delete**: Swipe left on any item to reveal delete button with confirmation
 - **Item Detail Modal**: Tap items to view details, log consumption, edit, find recipes, or add to shopping list
@@ -86,7 +86,7 @@ Preferred communication style: Simple, everyday language.
 - **expo-camera**: Receipt photo capture
 - **expo-image-picker**: Gallery selection
 - **expo-haptics**: Tactile feedback
-- **expo-web-browser**: Instacart integration opens in-app browser
+- **expo-web-browser**: Opens external links in-app browser
 
 ### Key npm packages
 - `@tanstack/react-query`: Server state management
