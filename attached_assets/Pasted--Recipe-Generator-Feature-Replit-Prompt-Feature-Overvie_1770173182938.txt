@@ -1,0 +1,113 @@
+# Recipe Generator Feature - Replit Prompt
+
+## Feature Overview
+Add an AI-powered recipe generator to NomUp that helps users cook with expiring ingredients before they go to waste. Users can select expiring items, specify cooking time preferences, receive 1-2 recipe suggestions with ingredient matching scores, and log consumption after cooking using the existing split slider component.
+
+## Tech Stack
+- **Frontend**: React Native (Expo SDK 54) with existing navigation structure
+- **AI Integration**: Google Gemini 3 Flash via Replit AI Integrations
+- **Notifications**: expo-notifications for local scheduled notifications (no server required)
+- **Storage**: AsyncStorage for saved recipes and recipe history
+- **State Management**: Existing AppContext + React Query
+
+## User Flow
+
+### Primary Flow
+1. **Discovery**: PantryScreen shows banner when 2+ items are expiring: "{X} items expiring soon" with "Find Recipes" button
+2. **Time Selection**: RecipeSuggestionScreen displays expiring ingredients and cooking time selector (15/30/60 min options)
+3. **Generation**: User taps "Get Recipe Ideas" → Gemini 3 generates 2 recipe options
+4. **Selection**: RecipeResultsScreen shows 2 recipe cards with thumbnails, match score, cooking time, and missing ingredients. User can save recipes (heart icon) or tap card to view details
+5. **Recipe Detail**: RecipeDetailScreen shows full recipe with ingredients list and step-by-step instructions
+6. **Cooking (Optional for MVP)**: "Start Cooking" button launches CookingModeScreen with full-screen step slides
+7. **Consumption Logging**: After cooking, CookingCompleteScreen shows list of recipe ingredients with existing split slider component pre-filled with recipe amounts. User adjusts quantities used and confirms
+8. **Update Pantry**: Grocery quantities update in AsyncStorage, items reaching 0 are removed
+
+### Secondary Flow
+- **Settings Control**: User enables "Expiration Alerts" toggle in Settings → requests notification permission → schedules local notifications
+- **Push Notification**: At 6 PM day before expiration, local notification triggers: "🥦 {X} items expiring soon. Need recipe ideas?" → Opens RecipeSuggestionScreen
+
+## Gemini 3 Integration Points
+
+### Where to Use Gemini 3
+**Recipe Generation Endpoint**: `/api/generate-recipe` (or client-side direct call)
+
+### Which Gemini 3 Features
+
+1. **Model**: `gemini-3-flash-preview`
+   - Fast generation (2-5 sec response)
+   - Cost-effective for recipe generation
+   - Has free tier for MVP testing
+
+2. **Thinking Level**: `low`
+   - Recipes don't require deep reasoning
+   - Faster responses
+   - Lower cost per generation
+
+3. **Structured Output**: `response_mime_type: "application/json"`
+   - Enforce strict JSON schema for recipe format
+   - Eliminates parsing errors
+   - Returns consistent data structure
+
+4. **Response Schema**: Define explicit JSON structure with:
+   - Recipe title, totalTime, servings, matchScore
+   - usedIngredients array with groceryItemId linkage
+   - missingIngredients array
+   - steps array with stepNumber, instruction, duration, temperature
+
+### Prompt Strategy
+- Input: List of expiring items (name, quantity, unit, daysUntilExpiration)
+- Constraints: Max cooking time, skill level (beginner/intermediate)
+- Output: 2 recipe options prioritizing items expiring soonest
+- Instruction: Minimize additional ingredients, provide clear step-by-step instructions
+
+## New Components/Screens Needed
+
+**Screens**:
+- `RecipeSuggestionScreen` - Time selector and expiring items display
+- `RecipeResultsScreen` - Display 2 recipe cards with thumbnails
+- `RecipeDetailScreen` - Full recipe view with ingredients and steps
+- `CookingModeScreen` - Full-screen step-by-step slides (optional for MVP)
+- `CookingCompleteScreen` - Consumption logging with split sliders
+
+**Components**:
+- `RecipeCard` - Card with thumbnail, title, metadata (time, match score), save button
+- `TimeSelector` - Segmented buttons for 15/30/60 min selection
+- `ExpiringItemsBanner` - Banner on PantryScreen with "Find Recipes" CTA
+- `ConsumptionSlider` - Reuse existing component from ConsumptionScreen
+
+**Navigation**: Add recipe flow to existing MainTabNavigator
+
+## Data Models
+
+**Recipe Interface**: id, title, thumbnailUrl (optional), totalTime, servings, matchScore (0-100), missingIngredients[], usedIngredients[] (with groceryItemId, name, amount, prepNotes), steps[] (stepNumber, instruction, duration, temperature), isSaved, createdAt
+
+**AsyncStorage Keys**: `@saved_recipes`, `@recipe_history`, `@notifications_enabled`
+
+## Notification Logic
+- Schedule local notifications when items will expire in 2 days
+- Trigger time: 6 PM day before expiration
+- Only notify if 2+ items expiring on same date
+- Reschedule whenever grocery list changes
+- User controls via Settings toggle (no login required)
+
+## MVP Scope (Hackathon-Ready)
+
+**Must Have**:
+- Expiring items banner with "Find Recipes" button
+- Time preference selector
+- Gemini 3 integration returning 2 structured recipe options
+- Recipe cards with placeholder thumbnails and match scores
+- Recipe detail view with steps
+- Post-cooking consumption logging using existing split slider
+- Settings toggle for notifications
+
+**Nice to Have**:
+- Full-screen cooking mode with swipe navigation
+- Save recipes to favorites
+- AI-generated recipe thumbnails
+
+**Skip for MVP**:
+- Per-step timers
+- Voice control
+- Recipe history view
+- Meal planning calendar
