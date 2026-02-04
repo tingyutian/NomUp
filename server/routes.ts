@@ -10,7 +10,7 @@ const ai = new GoogleGenAI({
   },
 });
 
-const GEMINI_MODEL = "gemini-3-flash";
+const GEMINI_MODEL = "gemini-3-flash-preview";
 
 interface ExpiringIngredient {
   id: string;
