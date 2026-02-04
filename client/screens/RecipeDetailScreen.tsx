@@ -6,8 +6,9 @@ import {
   StyleSheet,
   Pressable,
 } from "react-native";
-import { useRoute } from "@react-navigation/native";
+import { useRoute, useNavigation } from "@react-navigation/native";
 import type { RouteProp } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { Feather } from "@expo/vector-icons";
@@ -17,9 +18,10 @@ import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useApp } from "@/context/AppContext";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
-import type { RootStackParamList } from "@/navigation/RootStackNavigator";
+import type { RootStackParamList, CookingRecipe, CookingStep } from "@/navigation/RootStackNavigator";
 
 type RecipeDetailRouteProp = RouteProp<RootStackParamList, "RecipeDetail">;
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface IngredientRowProps {
   ingredient: string;
@@ -57,8 +59,40 @@ function IngredientRow({ ingredient, isMatched, isInList, onAddToList }: Ingredi
   );
 }
 
+function parseInstructionsToSteps(instructions: string): CookingStep[] {
+  const lines = instructions
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  if (lines.length === 0) {
+    return [{ stepNumber: 1, instruction: instructions.trim() }];
+  }
+
+  const steps: CookingStep[] = [];
+  let stepNumber = 1;
+
+  for (const line of lines) {
+    const cleaned = line
+      .replace(/^(step\s*)?(\d+[\.\)\:]?\s*)/i, "")
+      .replace(/^\-\s*/, "")
+      .trim();
+
+    if (cleaned.length > 0) {
+      steps.push({
+        stepNumber,
+        instruction: cleaned,
+      });
+      stepNumber++;
+    }
+  }
+
+  return steps.length > 0 ? steps : [{ stepNumber: 1, instruction: instructions.trim() }];
+}
+
 export default function RecipeDetailScreen() {
   const route = useRoute<RecipeDetailRouteProp>();
+  const navigation = useNavigation<NavigationProp>();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
@@ -67,6 +101,21 @@ export default function RecipeDetailScreen() {
   
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
   const [showBanner, setShowBanner] = useState(false);
+
+  const handleStartCooking = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    const steps = parseInstructionsToSteps(recipe.instructions);
+    const cookingRecipe: CookingRecipe = {
+      id: recipe.id,
+      title: recipe.name,
+      thumbnail: recipe.thumbnail,
+      steps,
+      usedIngredients: recipe.matchedIngredients,
+    };
+    
+    navigation.navigate("CookingMode", { recipe: cookingRecipe });
+  };
 
   const shoppingListNames = useMemo(
     () => new Set(shoppingList.map((item) => item.name.toLowerCase())),
@@ -130,7 +179,7 @@ export default function RecipeDetailScreen() {
       <ScrollView
         contentContainerStyle={[
           styles.content,
-          { paddingTop: headerHeight, paddingBottom: insets.bottom + Spacing.xl },
+          { paddingTop: headerHeight, paddingBottom: 100 + insets.bottom },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -208,6 +257,19 @@ export default function RecipeDetailScreen() {
           </ThemedText>
         </Animated.View>
       </ScrollView>
+
+      <View style={[styles.footer, { paddingBottom: insets.bottom + Spacing.md }]}>
+        <Pressable
+          onPress={handleStartCooking}
+          style={[styles.cookButton, { backgroundColor: theme.text }]}
+          testID="button-start-cooking"
+        >
+          <Feather name="play" size={20} color={theme.buttonText} />
+          <ThemedText type="bodyMedium" style={{ color: theme.buttonText }}>
+            Start Cooking
+          </ThemedText>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -297,5 +359,21 @@ const styles = StyleSheet.create({
   },
   bannerText: {
     color: "#FFF",
+  },
+  footer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+  },
+  cookButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    gap: Spacing.sm,
   },
 });

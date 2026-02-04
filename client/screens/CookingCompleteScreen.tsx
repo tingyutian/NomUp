@@ -14,16 +14,10 @@ import { ConfirmationBanner } from "@/components/atoms/ConfirmationBanner";
 import { useTheme } from "@/hooks/useTheme";
 import { useApp } from "@/context/AppContext";
 import { Spacing, BorderRadius, Colors } from "@/constants/theme";
-import type { RootStackParamList, GeneratedRecipe } from "@/navigation/RootStackNavigator";
+import type { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 type RouteProps = RouteProp<RootStackParamList, "CookingComplete">;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
-interface IngredientUsage {
-  groceryId: string;
-  name: string;
-  usedAmount: number;
-}
 
 export default function CookingCompleteScreen() {
   const { theme } = useTheme();
@@ -33,27 +27,30 @@ export default function CookingCompleteScreen() {
   const insets = useSafeAreaInsets();
   const { groceries, useGrocery } = useApp();
 
-  const { recipe, selectedIngredients } = route.params;
+  const { recipe } = route.params;
   const [showBanner, setShowBanner] = useState(false);
 
-  const [usageAmounts, setUsageAmounts] = useState<Record<string, number>>(() => {
-    const initial: Record<string, number> = {};
-    selectedIngredients.forEach((ing) => {
-      initial[ing.id] = 5;
-    });
-    return initial;
-  });
-
   const ingredientsWithData = useMemo(() => {
-    return selectedIngredients.map((ing) => {
-      const grocery = groceries.find((g) => g.id === ing.id);
+    return recipe.usedIngredients.map((ingredientName) => {
+      const grocery = groceries.find(
+        (g) => g.name.toLowerCase() === ingredientName.toLowerCase()
+      );
       return {
-        ...ing,
+        id: grocery?.id || ingredientName,
+        name: ingredientName,
         grocery,
         currentUsed: grocery?.usedAmount || 0,
       };
     });
-  }, [selectedIngredients, groceries]);
+  }, [recipe.usedIngredients, groceries]);
+
+  const [usageAmounts, setUsageAmounts] = useState<Record<string, number>>(() => {
+    const initial: Record<string, number> = {};
+    ingredientsWithData.forEach((ing) => {
+      initial[ing.id] = 5;
+    });
+    return initial;
+  });
 
   const handleUsageChange = (id: string, amount: number) => {
     setUsageAmounts((prev) => ({
@@ -65,10 +62,12 @@ export default function CookingCompleteScreen() {
   const handleConfirm = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    for (const ing of selectedIngredients) {
-      const amount = usageAmounts[ing.id] || 0;
-      if (amount > 0) {
-        await useGrocery(ing.id, amount);
+    for (const ing of ingredientsWithData) {
+      if (ing.grocery) {
+        const amount = usageAmounts[ing.id] || 0;
+        if (amount > 0) {
+          await useGrocery(ing.grocery.id, amount);
+        }
       }
     }
 
@@ -76,6 +75,10 @@ export default function CookingCompleteScreen() {
     setTimeout(() => {
       navigation.navigate("Main");
     }, 1500);
+  };
+
+  const handleSkip = () => {
+    navigation.navigate("Main");
   };
 
   return (
@@ -115,41 +118,60 @@ export default function CookingCompleteScreen() {
           </View>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(150).duration(200)}>
-          <ThemedText type="h4" style={styles.sectionTitle}>
-            Ingredients Used
-          </ThemedText>
-        </Animated.View>
+        {ingredientsWithData.length > 0 ? (
+          <>
+            <Animated.View entering={FadeInDown.delay(150).duration(200)}>
+              <ThemedText type="h4" style={styles.sectionTitle}>
+                Ingredients Used
+              </ThemedText>
+            </Animated.View>
 
-        {ingredientsWithData.map((item, index) => (
-          <Animated.View
-            key={item.id}
-            entering={FadeInDown.delay(200 + index * 50).duration(200)}
-          >
-            <View style={[styles.ingredientCard, { backgroundColor: theme.backgroundDefault }]}>
-              <View style={styles.ingredientHeader}>
-                <ThemedText type="bodyMedium">{item.name}</ThemedText>
-                {item.grocery ? (
-                  <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                    {item.grocery.quantity} {item.grocery.unit} in pantry
-                  </ThemedText>
-                ) : null}
-              </View>
-              <Slider
-                value={usageAmounts[item.id] || 0}
-                onValueChange={(val) => handleUsageChange(item.id, val)}
-                min={0}
-                max={10}
-                step={1}
-                showLabel={true}
-                testID={`slider-${item.id}`}
-              />
-            </View>
-          </Animated.View>
-        ))}
+            {ingredientsWithData.map((item, index) => (
+              <Animated.View
+                key={item.id}
+                entering={FadeInDown.delay(200 + index * 50).duration(200)}
+              >
+                <View style={[styles.ingredientCard, { backgroundColor: theme.backgroundDefault }]}>
+                  <View style={styles.ingredientHeader}>
+                    <ThemedText type="bodyMedium">{item.name}</ThemedText>
+                    {item.grocery ? (
+                      <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                        {item.grocery.quantity} {item.grocery.unit} in pantry
+                      </ThemedText>
+                    ) : (
+                      <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                        Not in pantry
+                      </ThemedText>
+                    )}
+                  </View>
+                  {item.grocery ? (
+                    <Slider
+                      value={usageAmounts[item.id] || 0}
+                      onValueChange={(val) => handleUsageChange(item.id, val)}
+                      min={0}
+                      max={10}
+                      step={1}
+                      showLabel={true}
+                      testID={`slider-${item.id}`}
+                    />
+                  ) : null}
+                </View>
+              </Animated.View>
+            ))}
+          </>
+        ) : null}
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + Spacing.md }]}>
+        <Pressable
+          onPress={handleSkip}
+          style={[styles.skipButton, { borderColor: theme.divider }]}
+          testID="button-skip"
+        >
+          <ThemedText type="bodyMedium" style={{ color: theme.textSecondary }}>
+            Skip
+          </ThemedText>
+        </Pressable>
         <Pressable
           onPress={handleConfirm}
           style={[styles.confirmButton, { backgroundColor: theme.text }]}
@@ -220,8 +242,19 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
+    flexDirection: "row",
+    gap: Spacing.md,
+  },
+  skipButton: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
   },
   confirmButton: {
+    flex: 2,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

@@ -4,21 +4,21 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import type { RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import Animated, { FadeIn, FadeInRight, FadeInLeft } from "react-native-reanimated";
+import Animated, { FadeIn } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
-import type { RootStackParamList, GeneratedRecipe } from "@/navigation/RootStackNavigator";
+import type { RootStackParamList, CookingStep } from "@/navigation/RootStackNavigator";
 
 type RouteProps = RouteProp<RootStackParamList, "CookingMode">;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface StepCardProps {
-  step: GeneratedRecipe["steps"][0];
+  step: CookingStep;
   totalSteps: number;
   isActive: boolean;
 }
@@ -92,7 +92,7 @@ export default function CookingModeScreen() {
   const navigation = useNavigation<NavigationProp>();
   const insets = useSafeAreaInsets();
 
-  const { recipe, selectedIngredients } = route.params;
+  const { recipe } = route.params;
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
@@ -112,7 +112,7 @@ export default function CookingModeScreen() {
       flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      navigation.navigate("CookingComplete", { recipe, selectedIngredients });
+      navigation.navigate("CookingComplete", { recipe });
     }
   };
 
