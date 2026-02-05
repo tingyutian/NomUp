@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Pressable,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import type { RouteProp } from "@react-navigation/native";
@@ -13,7 +14,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { HeaderButton } from "@react-navigation/elements";
-import { Feather, AntDesign } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
@@ -108,6 +109,7 @@ export default function RecipeDetailScreen() {
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isCheckingSaved, setIsCheckingSaved] = useState(true);
+  const [showUnsaveModal, setShowUnsaveModal] = useState(false);
 
   useEffect(() => {
     const checkIfSaved = async () => {
@@ -129,16 +131,23 @@ export default function RecipeDetailScreen() {
     checkIfSaved();
   }, [recipe.id]);
 
-  const handleSaveRecipe = async () => {
-    if (isSaving || isSaved) return;
+  const handleHeartPress = () => {
+    if (isSaving) return;
     
+    if (isSaved) {
+      setShowUnsaveModal(true);
+    } else {
+      handleSaveRecipe();
+    }
+  };
+
+  const handleSaveRecipe = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsSaving(true);
     
     try {
       const baseUrl = getApiUrl();
       
-      // First, get enhanced steps from AI
       let enhancedSteps = null;
       try {
         const enhanceResponse = await fetch(
@@ -160,7 +169,6 @@ export default function RecipeDetailScreen() {
         console.error("Error enhancing instructions:", enhanceError);
       }
 
-      // Save the recipe with enhanced steps
       const response = await fetch(
         new URL("/api/saved-recipes", baseUrl).toString(),
         {
@@ -181,19 +189,42 @@ export default function RecipeDetailScreen() {
     }
   };
 
+  const handleUnsaveRecipe = async () => {
+    setShowUnsaveModal(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsSaving(true);
+    
+    try {
+      const baseUrl = getApiUrl();
+      const response = await fetch(
+        new URL(`/api/saved-recipes/${recipe.id}`, baseUrl).toString(),
+        { method: "DELETE" }
+      );
+      
+      if (response.ok) {
+        setIsSaved(false);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (error) {
+      console.error("Error unsaving recipe:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
         <HeaderButton
-          onPress={handleSaveRecipe}
+          onPress={handleHeartPress}
           disabled={isSaving || isCheckingSaved}
         >
           {isSaving ? (
             <ActivityIndicator size="small" color={Colors.light.expiredRed} />
           ) : (
-            <AntDesign
-              name={isSaved ? "heart" : "hearto"}
-              size={24}
+            <Ionicons
+              name={isSaved ? "heart" : "heart-outline"}
+              size={26}
               color={isSaved ? Colors.light.expiredRed : theme.text}
             />
           )}
@@ -298,6 +329,38 @@ export default function RecipeDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
+      <Modal
+        visible={showUnsaveModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowUnsaveModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.backgroundSecondary }]}>
+            <ThemedText type="h4" style={styles.modalTitle}>
+              Remove from Saved?
+            </ThemedText>
+            <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center" }}>
+              This recipe will be removed from your saved recipes.
+            </ThemedText>
+            <View style={styles.modalButtons}>
+              <Pressable
+                onPress={() => setShowUnsaveModal(false)}
+                style={[styles.modalButton, { backgroundColor: theme.divider }]}
+              >
+                <ThemedText type="bodyMedium">Cancel</ThemedText>
+              </Pressable>
+              <Pressable
+                onPress={handleUnsaveRecipe}
+                style={[styles.modalButton, { backgroundColor: Colors.light.expiredRed }]}
+              >
+                <ThemedText type="bodyMedium" style={{ color: "#FFF" }}>Remove</ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {showBanner ? (
         <Animated.View
           entering={FadeIn.duration(200)}
@@ -525,5 +588,35 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.lg,
     borderRadius: BorderRadius.lg,
     gap: Spacing.sm,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: Spacing.xl,
+  },
+  modalContent: {
+    width: "100%",
+    maxWidth: 320,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.xl,
+    alignItems: "center",
+  },
+  modalTitle: {
+    marginBottom: Spacing.md,
+    textAlign: "center",
+  },
+  modalButtons: {
+    flexDirection: "row",
+    gap: Spacing.md,
+    marginTop: Spacing.xl,
+    width: "100%",
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
   },
 });
