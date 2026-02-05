@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { View, StyleSheet, Pressable, Dimensions, FlatList, ViewToken } from "react-native";
+import { View, StyleSheet, Pressable, Dimensions, FlatList, ViewToken, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import type { RouteProp } from "@react-navigation/native";
@@ -8,8 +8,9 @@ import Animated, { FadeIn } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
+import { CookingTimer } from "@/components/CookingTimer";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { Spacing, BorderRadius, Colors } from "@/constants/theme";
 import type { RootStackParamList, CookingStep } from "@/navigation/RootStackNavigator";
 
 type RouteProps = RouteProp<RootStackParamList, "CookingMode">;
@@ -29,7 +30,10 @@ function StepCard({ step, totalSteps, isActive }: StepCardProps) {
 
   return (
     <View style={[styles.stepCard, { width: SCREEN_WIDTH }]}>
-      <View style={[styles.stepContent, { paddingTop: insets.top + Spacing["3xl"] }]}>
+      <ScrollView 
+        contentContainerStyle={[styles.stepContent, { paddingTop: insets.top + Spacing["2xl"] }]}
+        showsVerticalScrollIndicator={false}
+      >
         <Animated.View entering={isActive ? FadeIn.delay(100).duration(300) : undefined}>
           <View style={styles.stepIndicator}>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
@@ -58,30 +62,29 @@ function StepCard({ step, totalSteps, isActive }: StepCardProps) {
           </ThemedText>
         </Animated.View>
 
-        {step.duration || step.temperature ? (
+        {step.temperature ? (
           <Animated.View 
             entering={isActive ? FadeIn.delay(400).duration(300) : undefined}
             style={styles.metaContainer}
           >
-            {step.duration ? (
-              <View style={[styles.metaBadge, { backgroundColor: theme.backgroundSecondary }]}>
-                <Feather name="clock" size={16} color={theme.textSecondary} />
-                <ThemedText type="bodyMedium" style={{ color: theme.text }}>
-                  {step.duration} min
-                </ThemedText>
-              </View>
-            ) : null}
-            {step.temperature ? (
-              <View style={[styles.metaBadge, { backgroundColor: theme.backgroundSecondary }]}>
-                <Feather name="thermometer" size={16} color={theme.textSecondary} />
-                <ThemedText type="bodyMedium" style={{ color: theme.text }}>
-                  {step.temperature}
-                </ThemedText>
-              </View>
-            ) : null}
+            <View style={[styles.metaBadge, { backgroundColor: theme.backgroundSecondary }]}>
+              <Feather name="thermometer" size={16} color={theme.textSecondary} />
+              <ThemedText type="bodyMedium" style={{ color: theme.text }}>
+                {step.temperature}
+              </ThemedText>
+            </View>
           </Animated.View>
         ) : null}
-      </View>
+
+        {step.duration ? (
+          <Animated.View 
+            entering={isActive ? FadeIn.delay(500).duration(400) : undefined}
+            style={styles.timerContainer}
+          >
+            <CookingTimer durationMinutes={step.duration} />
+          </Animated.View>
+        ) : null}
+      </ScrollView>
     </View>
   );
 }
@@ -253,10 +256,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   stepContent: {
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: Spacing["2xl"],
     alignItems: "center",
     justifyContent: "center",
+    paddingBottom: Spacing["3xl"],
   },
   stepIndicator: {
     marginBottom: Spacing.xl,
@@ -290,6 +294,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.full,
+  },
+  timerContainer: {
+    width: "100%",
+    marginTop: Spacing.lg,
   },
   footer: {
     flexDirection: "row",
