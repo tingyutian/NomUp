@@ -13,7 +13,8 @@ Core features:
 - **Swipe-to-Delete**: Swipe left on any item to reveal delete button with confirmation
 - **Item Detail Modal**: Tap items to view details, log consumption, edit, find recipes, or add to shopping list
 - **Recipe Discovery**: Recipe suggestions based on pantry items, accessible via book icon in ItemDetailModal. Uses TheMealDB API for recipes with optimized local fuzzy matching for ingredient scoring (no AI call for matching). Shows match percentage, "You Have" and "Need to Buy" sections, with ability to add missing ingredients to shopping list. Performance optimized: ingredient lookup table for 70+ common items, 5 recipe limit, under 1 second load times. Flow: ItemDetailModal (book icon) → RecipeFeedScreen → RecipeDetailScreen → CookingModeScreen → CookingCompleteScreen
-- **Cooking Mode**: Full-screen step-by-step cooking instructions with swipeable navigation, progress dots, and metadata badges (duration, temperature). Accessed via "Start Cooking" button on RecipeDetailScreen. Parses TheMealDB text instructions into structured steps
+- **Cooking Mode**: Full-screen step-by-step cooking instructions with swipeable navigation, progress dots, and metadata badges (duration, temperature). Accessed via "Start Cooking" button on RecipeDetailScreen. Uses Gemini AI to enhance plain text instructions into structured steps with extracted durations and temperatures. Features integrated cooking timers for steps with timing (e.g., "simmer for 30 minutes" becomes a step with a 30-minute timer)
+- **Cooking Timers**: Interactive countdown timers appear on cooking steps that have duration. Features start/pause/reset controls, progress bar, MM:SS countdown display, and haptic feedback when complete. Timers handle background app state and continue tracking time when app is minimized
 - **Cooking Complete**: After finishing cooking, users can log ingredient usage to update pantry quantities. Uses navigation.reset() to clear the cooking stack and return to pantry
 - **Push Notifications**: Expiring item notifications using expo-notifications (no in-app banner). Permission requested after first item added to pantry. Notifications scheduled for items expiring within 5 days
 
@@ -60,6 +61,7 @@ Preferred communication style: Simple, everyday language.
 **Key Endpoints**:
 - `POST /api/scan-receipt` - Analyzes receipt images and extracts grocery items
 - `GET /api/recipes/by-ingredient/:itemName` - Fetches recipes using TheMealDB with local fuzzy matching for ingredient scoring (uses lookup table for 70+ common ingredients, Gemini fallback when no results). Returns 5 recipes with match percentage, matched/missing ingredients. Query param `pantry` contains user's pantry items
+- `POST /api/enhance-instructions` - Uses Gemini to transform plain text recipe instructions into structured steps with extracted durations (in minutes) and temperatures. Returns array of CookingStep objects
 - Chat and image generation routes available through `server/replit_integrations/`
 
 **Database Schema**: Located in `shared/schema.ts`, currently includes users table. The schema uses Drizzle ORM with Zod validation via `drizzle-zod`.
