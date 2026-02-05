@@ -5,6 +5,7 @@ import {
   Image,
   StyleSheet,
   Pressable,
+  ActivityIndicator,
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import type { RouteProp } from "@react-navigation/native";
@@ -18,6 +19,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useApp } from "@/context/AppContext";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
+import { getApiUrl } from "@/lib/query-client";
 import type { RootStackParamList, CookingRecipe, CookingStep } from "@/navigation/RootStackNavigator";
 
 type RecipeDetailRouteProp = RouteProp<RootStackParamList, "RecipeDetail">;
@@ -101,20 +103,55 @@ export default function RecipeDetailScreen() {
   
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
   const [showBanner, setShowBanner] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
 
-  const handleStartCooking = () => {
+  const handleStartCooking = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsEnhancing(true);
     
-    const steps = parseInstructionsToSteps(recipe.instructions);
-    const cookingRecipe: CookingRecipe = {
-      id: recipe.id,
-      title: recipe.name,
-      thumbnail: recipe.thumbnail,
-      steps,
-      usedIngredients: recipe.matchedIngredients,
-    };
-    
-    navigation.navigate("CookingMode", { recipe: cookingRecipe });
+    try {
+      const baseUrl = getApiUrl();
+      const response = await fetch(new URL("/api/enhance-instructions", baseUrl).toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          instructions: recipe.instructions,
+          recipeName: recipe.name,
+        }),
+      });
+      
+      let steps: CookingStep[];
+      
+      if (response.ok) {
+        const data = await response.json();
+        steps = data.steps;
+      } else {
+        steps = parseInstructionsToSteps(recipe.instructions);
+      }
+      
+      const cookingRecipe: CookingRecipe = {
+        id: recipe.id,
+        title: recipe.name,
+        thumbnail: recipe.thumbnail,
+        steps,
+        usedIngredients: recipe.matchedIngredients,
+      };
+      
+      navigation.navigate("CookingMode", { recipe: cookingRecipe });
+    } catch (error) {
+      console.error("Error enhancing instructions:", error);
+      const steps = parseInstructionsToSteps(recipe.instructions);
+      const cookingRecipe: CookingRecipe = {
+        id: recipe.id,
+        title: recipe.name,
+        thumbnail: recipe.thumbnail,
+        steps,
+        usedIngredients: recipe.matchedIngredients,
+      };
+      navigation.navigate("CookingMode", { recipe: cookingRecipe });
+    } finally {
+      setIsEnhancing(false);
+    }
   };
 
   const shoppingListNames = useMemo(
@@ -261,13 +298,29 @@ export default function RecipeDetailScreen() {
       <View style={[styles.footer, { paddingBottom: insets.bottom + Spacing.md }]}>
         <Pressable
           onPress={handleStartCooking}
-          style={[styles.cookButton, { backgroundColor: theme.text }]}
+          disabled={isEnhancing}
+          style={[
+            styles.cookButton, 
+            { backgroundColor: theme.text },
+            isEnhancing && { opacity: 0.7 },
+          ]}
           testID="button-start-cooking"
         >
-          <Feather name="play" size={20} color={theme.buttonText} />
-          <ThemedText type="bodyMedium" style={{ color: theme.buttonText }}>
-            Start Cooking
-          </ThemedText>
+          {isEnhancing ? (
+            <>
+              <ActivityIndicator size="small" color={theme.buttonText} />
+              <ThemedText type="bodyMedium" style={{ color: theme.buttonText }}>
+                Preparing Steps...
+              </ThemedText>
+            </>
+          ) : (
+            <>
+              <Feather name="play" size={20} color={theme.buttonText} />
+              <ThemedText type="bodyMedium" style={{ color: theme.buttonText }}>
+                Start Cooking
+              </ThemedText>
+            </>
+          )}
         </Pressable>
       </View>
     </View>

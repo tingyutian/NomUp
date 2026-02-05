@@ -586,6 +586,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enhance recipe instructions using Gemini
+  app.post("/api/enhance-instructions", async (req, res) => {
+    try {
+      const { instructions, recipeName } = req.body;
+
+      if (!instructions || typeof instructions !== "string") {
+        return res.status(400).json({ error: "Instructions are required" });
+      }
+
+      console.log(`Enhancing instructions for "${recipeName}"...`);
+
+      const enhanceSchema = {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            stepNumber: { type: Type.NUMBER },
+            instruction: { type: Type.STRING },
+            duration: { type: Type.NUMBER },
+            temperature: { type: Type.STRING },
+          },
+          required: ["stepNumber", "instruction"],
+        },
+      };
+
+      const prompt = `You are a cooking assistant. Transform these recipe instructions into clear, structured cooking steps.
+
+RECIPE: ${recipeName || "Unknown Recipe"}
+
+ORIGINAL INSTRUCTIONS:
+${instructions}
+
+For each step:
+1. Write a clear, actionable instruction (1-2 sentences max)
+2. Extract any duration mentioned (in minutes) - look for phrases like "cook for X minutes", "simmer X min", "bake for X hours" (convert hours to minutes)
+3. Extract any temperature mentioned (e.g., "350°F", "180°C", "medium-high heat")
+4. If a step has waiting time (e.g., "let rest for 10 minutes"), include that as a separate step with duration
+
+IMPORTANT:
+- Break down complex instructions into multiple simple steps
+- Always include duration when any time is mentioned (even implicitly like "until golden" = roughly 5-10 min)
+- Duration should be a number in minutes
+- Temperature can be exact (350°F) or descriptive (medium heat)
+- Keep each step focused on ONE action
+
+Return a JSON array of steps.`;
+
+      const response = await ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: enhanceSchema,
+        },
+      });
+
+      const text = response.text || "";
+      let steps: any[] = [];
+
+      try {
+        steps = JSON.parse(text);
+        // Ensure stepNumber is sequential
+        steps = steps.map((step: any, index: number) => ({
+          stepNumber: index + 1,
+          instruction: step.instruction,
+          duration: step.duration || undefined,
+          temperature: step.temperature || undefined,
+        }));
+      } catch (parseError) {
+        console.error("Error parsing Gemini response:", parseError);
+        // Fallback to basic parsing
+        steps = instructions
+          .split(/\r?\n/)
+          .map((line: string) => line.trim())
+          .filter((line: string) => line.length > 0)
+          .map((line: string, index: number) => ({
+            stepNumber: index + 1,
+            instruction: line.replace(/^(step\s*)?(\d+[\.\)\:]?\s*)/i, "").trim(),
+          }));
+      }
+
+      console.log(`Enhanced into ${steps.length} steps`);
+      res.json({ steps });
+    } catch (error) {
+      console.error("Error enhancing instructions:", error);
+      res.status(500).json({ error: "Failed to enhance instructions" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
