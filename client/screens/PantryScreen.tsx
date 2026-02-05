@@ -16,7 +16,6 @@ import { DeleteConfirmModal } from "@/components/organisms/DeleteConfirmModal";
 import { AddItemModal } from "@/components/organisms/AddItemModal";
 import { ConfirmationBanner } from "@/components/atoms/ConfirmationBanner";
 import { IconButton } from "@/components/atoms/IconButton";
-import { SearchBar } from "@/components/atoms/SearchBar";
 import { useTheme } from "@/hooks/useTheme";
 import { useApp, GroceryItem } from "@/context/AppContext";
 import { BorderRadius, Spacing, Colors } from "@/constants/theme";
@@ -28,8 +27,6 @@ type Props = NativeStackScreenProps<PantryStackParamList, "PantryMain">;
 
 type StorageTab = "fridge" | "freezer" | "pantry";
 type SortOption = "expiration" | "category" | "recent";
-
-const SEARCH_BAR_HEIGHT = 52;
 
 type RootNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -52,7 +49,6 @@ export default function PantryScreen({ navigation }: Props) {
   const [activeTab, setActiveTab] = useState<StorageTab>("fridge");
   const [sortBy, setSortBy] = useState<SortOption>("expiration");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   
   const [selectedItem, setSelectedItem] = useState<GroceryItem | null>(null);
@@ -75,15 +71,6 @@ export default function PantryScreen({ navigation }: Props) {
 
   const filteredAndSortedGroceries = useMemo(() => {
     let filtered = groceries.filter((item) => item.storageLocation === activeTab);
-    
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (item) =>
-          item.name.toLowerCase().includes(query) ||
-          item.category.toLowerCase().includes(query)
-      );
-    }
 
     return filtered.sort((a, b) => {
       switch (sortBy) {
@@ -97,7 +84,7 @@ export default function PantryScreen({ navigation }: Props) {
           return 0;
       }
     });
-  }, [groceries, activeTab, searchQuery, sortBy]);
+  }, [groceries, activeTab, sortBy]);
 
   const handleAddItem = async (data: any) => {
     const today = new Date();
@@ -204,10 +191,10 @@ export default function PantryScreen({ navigation }: Props) {
     >
       <Feather name="package" size={64} color={theme.textSecondary} />
       <ThemedText type="h4" style={[styles.emptyTitle, { color: theme.textSecondary }]}>
-        {searchQuery ? "No items found" : `No items in ${activeTab}`}
+        {`No items in ${activeTab}`}
       </ThemedText>
       <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center" }}>
-        {searchQuery ? "Try a different search term" : "Scan a receipt or add items manually"}
+        Scan a receipt or add items manually
       </ThemedText>
     </Animated.View>
   );
@@ -302,19 +289,11 @@ export default function PantryScreen({ navigation }: Props) {
         iconName="shopping-cart"
       />
 
-      <View style={[styles.fixedSearchContainer, { top: headerHeight + Spacing.lg }]}>
-        <SearchBar
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          onAddPress={() => setShowAddModal(true)}
-        />
-      </View>
-
       <FlatList
         data={filteredAndSortedGroceries}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{
-          paddingTop: headerHeight + Spacing.lg + SEARCH_BAR_HEIGHT + Spacing.md,
+          paddingTop: headerHeight + Spacing.lg,
           paddingBottom: tabBarHeight + Spacing.xl,
           paddingHorizontal: Spacing.lg,
         }}
@@ -408,12 +387,6 @@ export default function PantryScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  fixedSearchContainer: {
-    position: "absolute",
-    left: Spacing.lg,
-    right: Spacing.lg,
-    zIndex: 100,
   },
   sectionHeader: {
     marginBottom: Spacing.lg,
