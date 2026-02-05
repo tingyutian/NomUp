@@ -619,16 +619,15 @@ ORIGINAL INSTRUCTIONS:
 ${instructions}
 
 For each step:
-1. Write a clear, actionable instruction (1-2 sentences max)
-2. ONLY include "duration" if an EXPLICIT time is stated (e.g., "cook for 5 minutes", "simmer 30 min", "bake 1 hour")
+1. Write a clear, actionable instruction (1-2 sentences max) - KEEP any timing phrases in the text (e.g., "Bake for 25 minutes until golden")
+2. ONLY include "duration" field if an EXPLICIT time is stated (e.g., "cook for 5 minutes", "simmer 30 min", "bake 1 hour")
 3. Extract any temperature mentioned (e.g., "350°F", "180°C", "medium-high heat")
 
-CRITICAL RULES FOR DURATION:
-- ONLY add duration when the original text contains a specific number of minutes/seconds/hours
-- Do NOT estimate or guess times for vague phrases like "until golden", "until done", "until soft"
-- Do NOT add duration to steps like "preheat oven", "mix ingredients", "chop vegetables", "serve"
+CRITICAL RULES:
+- PRESERVE timing text in the instruction (do NOT remove "for X minutes" from the text)
+- ALSO extract that same time as the duration field (number in minutes)
+- Do NOT estimate times for vague phrases - only extract explicit numbers
 - Convert hours to minutes (1 hour = 60 minutes)
-- Most steps should NOT have a duration - only include it when a number is explicitly stated
 
 Return a JSON array of steps.`;
 

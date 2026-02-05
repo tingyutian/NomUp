@@ -173,47 +173,44 @@ export function CookingTimer({ durationMinutes, onComplete }: CookingTimerProps)
           />
         </View>
 
-        <Animated.View style={[styles.timeDisplay, pulseStyle]}>
-          <ThemedText 
-            type="h1" 
-            style={[
-              styles.timeText, 
-              { color: isComplete ? Colors.light.success : theme.text },
-            ]}
-          >
-            {isComplete ? "Done!" : formatTime(secondsLeft)}
-          </ThemedText>
-          {!isComplete && (
-            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              {formatTime(totalSeconds)} total
-            </ThemedText>
-          )}
-        </Animated.View>
-
-        <View style={styles.controls}>
-          <Pressable
-            onPress={handleToggle}
-            style={[
-              styles.mainButton, 
-              { backgroundColor: isComplete ? Colors.light.success : theme.text },
-            ]}
-            testID="timer-toggle"
-          >
-            <Feather name={getButtonIcon()} size={20} color={theme.buttonText} />
-            <ThemedText type="bodyMedium" style={{ color: theme.buttonText }}>
-              {getButtonText()}
-            </ThemedText>
-          </Pressable>
-
-          {(isRunning || secondsLeft < totalSeconds) && !isComplete ? (
-            <Pressable
-              onPress={handleReset}
-              style={[styles.resetButton, { backgroundColor: theme.backgroundTertiary }]}
-              testID="timer-reset"
+        <View style={styles.horizontalLayout}>
+          <Animated.View style={[styles.timeDisplay, pulseStyle]}>
+            <ThemedText 
+              type="h2" 
+              style={[
+                styles.timeText, 
+                { color: isComplete ? Colors.light.success : theme.text },
+              ]}
             >
-              <Feather name="rotate-ccw" size={18} color={theme.text} />
+              {isComplete ? "Done!" : formatTime(secondsLeft)}
+            </ThemedText>
+          </Animated.View>
+
+          <View style={styles.controls}>
+            <Pressable
+              onPress={handleToggle}
+              style={[
+                styles.mainButton, 
+                { backgroundColor: isComplete ? Colors.light.success : theme.text },
+              ]}
+              testID="timer-toggle"
+            >
+              <Feather name={getButtonIcon()} size={16} color={theme.buttonText} />
+              <ThemedText type="body" style={{ color: theme.buttonText }}>
+                {getButtonText()}
+              </ThemedText>
             </Pressable>
-          ) : null}
+
+            {(isRunning || secondsLeft < totalSeconds) && !isComplete ? (
+              <Pressable
+                onPress={handleReset}
+                style={[styles.resetButton, { backgroundColor: theme.backgroundTertiary }]}
+                testID="timer-reset"
+              >
+                <Feather name="rotate-ccw" size={14} color={theme.text} />
+              </Pressable>
+            ) : null}
+          </View>
         </View>
       </View>
     </View>
@@ -222,17 +219,17 @@ export function CookingTimer({ durationMinutes, onComplete }: CookingTimerProps)
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: Spacing.md,
+    marginTop: Spacing.sm,
     width: "100%",
   },
   timerBox: {
     borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    alignItems: "center",
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
   },
   progressBar: {
     width: "100%",
-    height: 4,
+    height: 3,
     backgroundColor: "rgba(0,0,0,0.1)",
     borderRadius: 2,
     overflow: "hidden",
@@ -242,32 +239,37 @@ const styles = StyleSheet.create({
     height: "100%",
     borderRadius: 2,
   },
-  timeDisplay: {
+  horizontalLayout: {
+    flexDirection: "row",
     alignItems: "center",
-    marginBottom: Spacing.sm,
+    justifyContent: "space-between",
+  },
+  timeDisplay: {
+    alignItems: "flex-start",
   },
   timeText: {
-    fontSize: 32,
-    lineHeight: 38,
+    fontSize: 24,
+    lineHeight: 28,
+    fontWeight: "600",
   },
   controls: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.sm,
+    gap: Spacing.xs,
   },
   mainButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.full,
-    gap: Spacing.xs,
+    gap: 4,
   },
   resetButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
   },
