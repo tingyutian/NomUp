@@ -23,7 +23,7 @@ interface CookingTimerProps {
 export function CookingTimer({ durationMinutes, onComplete }: CookingTimerProps) {
   const { theme } = useTheme();
   const [isRunning, setIsRunning] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState(durationMinutes * 60);
+  const [secondsLeft, setSecondsLeft] = useState(Math.round(durationMinutes * 60));
   const [isComplete, setIsComplete] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appStateRef = useRef(AppState.currentState);
@@ -32,12 +32,13 @@ export function CookingTimer({ durationMinutes, onComplete }: CookingTimerProps)
   const pulseScale = useSharedValue(1);
   const progressWidth = useSharedValue(0);
 
-  const totalSeconds = durationMinutes * 60;
+  const totalSeconds = Math.round(durationMinutes * 60);
   const progress = 1 - (secondsLeft / totalSeconds);
 
   const formatTime = useCallback((seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+    const roundedSeconds = Math.round(seconds);
+    const mins = Math.floor(roundedSeconds / 60);
+    const secs = roundedSeconds % 60;
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   }, []);
 
@@ -123,7 +124,7 @@ export function CookingTimer({ durationMinutes, onComplete }: CookingTimerProps)
   }));
 
   const progressStyle = useAnimatedStyle(() => ({
-    width: `${progressWidth.value}%`,
+    width: `${Math.round(progressWidth.value * 10) / 10}%`,
   }));
 
   const handleToggle = () => {
