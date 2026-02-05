@@ -45,8 +45,14 @@ export function ExpiringCard({ item, onPress, testID }: ExpiringCardProps) {
 
   const getExpirationText = () => {
     if (item.expiresIn <= 0) return "Expired";
-    if (item.expiresIn === 1) return "Expires in 1d";
-    return `Expires in ${item.expiresIn}d`;
+    if (item.expiresIn === 1) return "1 day left";
+    return `${item.expiresIn} days left`;
+  };
+
+  const getExpirationColor = () => {
+    if (item.expiresIn <= 0) return Colors.light.expiredRed;
+    if (item.expiresIn <= 2) return Colors.light.expiringOrange;
+    return theme.textSecondary;
   };
 
   return (
@@ -65,20 +71,25 @@ export function ExpiringCard({ item, onPress, testID }: ExpiringCardProps) {
         animatedStyle,
       ]}
     >
-      <View style={styles.iconContainer}>
-        <View style={[styles.iconPlaceholder, { backgroundColor: theme.backgroundDefault }]} />
+      <View style={styles.header}>
+        <ThemedText type="caption" style={[styles.category, { color: theme.textSecondary }]}>
+          {item.category.toUpperCase()}
+        </ThemedText>
+        <View style={[styles.expirationBadge, { backgroundColor: getExpirationColor() + "20" }]}>
+          <Feather name="clock" size={10} color={getExpirationColor()} />
+          <ThemedText type="caption" style={[styles.expirationText, { color: getExpirationColor() }]}>
+            {getExpirationText()}
+          </ThemedText>
+        </View>
       </View>
-      <ThemedText type="caption" style={[styles.category, { color: theme.textSecondary }]}>
-        {item.category.toUpperCase()}
-      </ThemedText>
       <ThemedText type="h4" numberOfLines={2} style={styles.name}>
         {item.name}
       </ThemedText>
       <View style={styles.footer}>
         <ThemedText type="small" style={{ color: theme.textSecondary }}>
-          {getExpirationText()}
+          {item.quantity} {item.unit}
         </ThemedText>
-        <Feather name="arrow-right" size={16} color={theme.text} />
+        <Feather name="chevron-right" size={16} color={theme.textSecondary} />
       </View>
     </AnimatedPressable>
   );
@@ -90,26 +101,38 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.xl,
     padding: Spacing.lg,
     marginRight: Spacing.md,
+    justifyContent: "space-between",
   },
-  iconContainer: {
-    marginBottom: Spacing.lg,
-  },
-  iconPlaceholder: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.sm,
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.md,
   },
   category: {
     fontSize: 10,
     letterSpacing: 0.5,
-    marginBottom: Spacing.xs,
+  },
+  expirationBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.sm,
+    gap: 4,
+  },
+  expirationText: {
+    fontSize: 10,
+    fontWeight: "500",
   },
   name: {
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
+    flex: 1,
   },
   footer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginTop: Spacing.sm,
   },
 });
