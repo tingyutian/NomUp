@@ -147,34 +147,12 @@ export default function RecipeDetailScreen() {
     
     try {
       const baseUrl = getApiUrl();
-      
-      let enhancedSteps = null;
-      try {
-        const enhanceResponse = await fetch(
-          new URL("/api/enhance-instructions", baseUrl).toString(),
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              instructions: recipe.instructions,
-              recipeName: recipe.name,
-            }),
-          }
-        );
-        if (enhanceResponse.ok) {
-          const enhanceData = await enhanceResponse.json();
-          enhancedSteps = enhanceData.steps;
-        }
-      } catch (enhanceError) {
-        console.error("Error enhancing instructions:", enhanceError);
-      }
-
       const response = await fetch(
         new URL("/api/saved-recipes", baseUrl).toString(),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ recipe, enhancedSteps }),
+          body: JSON.stringify({ recipe }),
         }
       );
       
