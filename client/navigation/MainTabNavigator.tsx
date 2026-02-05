@@ -109,7 +109,7 @@ export default function MainTabNavigator() {
           name="SavedTab"
           component={SavedStackNavigator}
           options={{
-            title: "SAVED",
+            title: "SAVED MENU",
             tabBarIcon: ({ color, size }) => (
               <Feather name="heart" size={size} color={color} />
             ),
@@ -119,7 +119,7 @@ export default function MainTabNavigator() {
           name="ListTab"
           component={ShoppingStackNavigator}
           options={{
-            title: "LIST",
+            title: "SHOPPING LIST",
             tabBarIcon: ({ color, size }) => (
               <View>
                 <Feather name="list" size={size} color={color} />
