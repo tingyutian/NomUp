@@ -7,7 +7,7 @@ export const Colors = {
     text: "#1A1A1A",
     textSecondary: "#6B6B6B",
     buttonText: "#FFFFFF",
-    tabIconDefault: "#B0B0B0",
+    tabIconDefault: "#A3A3A3",
     tabIconSelected: "#1A1A1A",
     link: "#1A1A1A",
     backgroundRoot: "#F5F1E8",
@@ -15,7 +15,7 @@ export const Colors = {
     backgroundSecondary: "#F9F7F3",
     backgroundTertiary: "#EFEBE3",
     divider: "#E8E4DB",
-    
+
     // Category Accent Colors (Pastel)
     produce: "#C8E6C9",
     dairy: "#BBDEFB",
@@ -23,13 +23,13 @@ export const Colors = {
     meat: "#F8BBD0",
     pantry: "#D7CCC8",
     frozen: "#B3E5FC",
-    
+
     // Semantic Colors
     expiringYellow: "#FFF176",
     expiringOrange: "#FFB74D",
     expiredRed: "#EF5350",
     success: "#66BB6A",
-    
+
     // Card Colors
     cardBlue: "#BBDEFB",
     cardYellow: "#FFF9C4",
@@ -48,19 +48,19 @@ export const Colors = {
     backgroundSecondary: "#333333",
     backgroundTertiary: "#3D3D3D",
     divider: "#404040",
-    
+
     produce: "#2E7D32",
     dairy: "#1565C0",
     bakery: "#F9A825",
     meat: "#C2185B",
     pantry: "#5D4037",
     frozen: "#0277BD",
-    
+
     expiringYellow: "#FDD835",
     expiringOrange: "#FB8C00",
     expiredRed: "#E53935",
     success: "#43A047",
-    
+
     cardBlue: "#1E3A5F",
     cardYellow: "#4A4520",
     cardGreen: "#1E3A2F",
@@ -185,7 +185,8 @@ export const Fonts = Platform.select({
   web: {
     sans: "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
     serif: "Playfair Display, Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
+    rounded:
+      "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });
