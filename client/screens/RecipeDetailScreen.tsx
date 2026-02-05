@@ -221,6 +221,37 @@ export default function RecipeDetailScreen() {
     
     try {
       const baseUrl = getApiUrl();
+      let steps: CookingStep[];
+      
+      // If recipe is saved, check for existing enhanced steps first
+      if (isSaved) {
+        try {
+          const savedResponse = await fetch(
+            new URL(`/api/saved-recipes/${recipe.id}`, baseUrl).toString()
+          );
+          if (savedResponse.ok) {
+            const savedData = await savedResponse.json();
+            if (savedData.recipe?.enhancedSteps && savedData.recipe.enhancedSteps.length > 0) {
+              // Use saved enhanced steps - instant!
+              steps = savedData.recipe.enhancedSteps;
+              const cookingRecipe: CookingRecipe = {
+                id: recipe.id,
+                title: recipe.name,
+                thumbnail: recipe.thumbnail,
+                steps,
+                usedIngredients: recipe.matchedIngredients,
+              };
+              navigation.navigate("CookingMode", { recipe: cookingRecipe });
+              setIsEnhancing(false);
+              return;
+            }
+          }
+        } catch (checkError) {
+          console.error("Error checking saved steps:", checkError);
+        }
+      }
+      
+      // Generate enhanced steps via AI
       const response = await fetch(new URL("/api/enhance-instructions", baseUrl).toString(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -230,11 +261,25 @@ export default function RecipeDetailScreen() {
         }),
       });
       
-      let steps: CookingStep[];
-      
       if (response.ok) {
         const data = await response.json();
         steps = data.steps;
+        
+        // Save enhanced steps for saved recipes
+        if (isSaved && steps.length > 0) {
+          try {
+            await fetch(
+              new URL(`/api/saved-recipes/${recipe.id}/steps`, baseUrl).toString(),
+              {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ enhancedSteps: steps }),
+              }
+            );
+          } catch (saveError) {
+            console.error("Error saving enhanced steps:", saveError);
+          }
+        }
       } else {
         steps = parseInstructionsToSteps(recipe.instructions);
       }
