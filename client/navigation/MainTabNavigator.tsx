@@ -6,8 +6,10 @@ import { BlurView } from "expo-blur";
 import { Platform } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import PantryStackNavigator from "@/navigation/PantryStackNavigator";
 import ShoppingStackNavigator from "@/navigation/ShoppingStackNavigator";
+import SavedStackNavigator from "@/navigation/SavedStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
 import { useApp } from "@/context/AppContext";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
@@ -16,30 +18,32 @@ import { ThemedText } from "@/components/ThemedText";
 
 export type MainTabParamList = {
   PantryTab: undefined;
-  AddTab: undefined;
+  SavedTab: undefined;
   ListTab: undefined;
 };
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-function AddButton() {
+function FloatingAddButton() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={styles.addButtonContainer}>
-      <Pressable
-        onPress={() => navigation.navigate("ScanReceipt")}
-        style={[styles.addButton, { backgroundColor: theme.text }]}
-      >
-        <Feather name="plus" size={28} color={theme.buttonText} />
-      </Pressable>
-    </View>
+    <Pressable
+      onPress={() => navigation.navigate("ScanReceipt")}
+      style={[
+        styles.floatingAddButton,
+        { 
+          backgroundColor: theme.text,
+          bottom: 100 + insets.bottom,
+        }
+      ]}
+      testID="floating-add-button"
+    >
+      <Feather name="plus" size={28} color={theme.buttonText} />
+    </Pressable>
   );
-}
-
-function EmptyScreen() {
-  return <View />;
 }
 
 function ShoppingBadge({ count }: { count: number }) {
@@ -60,91 +64,80 @@ export default function MainTabNavigator() {
   const uncheckedCount = shoppingList.filter((item) => !item.checked).length;
 
   return (
-    <Tab.Navigator
-      initialRouteName="PantryTab"
-      screenOptions={{
-        tabBarActiveTintColor: theme.tabIconSelected,
-        tabBarInactiveTintColor: theme.tabIconDefault,
-        tabBarStyle: {
-          position: "absolute",
-          backgroundColor: Platform.select({
-            ios: "transparent",
-            android: Colors.light.backgroundRoot,
-          }),
-          borderTopWidth: 0,
-          elevation: 0,
-          height: 80,
-        },
-        tabBarBackground: () =>
-          Platform.OS === "ios" ? (
-            <BlurView
-              intensity={100}
-              tint={isDark ? "dark" : "light"}
-              style={StyleSheet.absoluteFill}
-            />
-          ) : null,
-        headerShown: false,
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "500",
-        },
-      }}
-    >
-      <Tab.Screen
-        name="PantryTab"
-        component={PantryStackNavigator}
-        options={{
-          title: "PANTRY",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="box" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="AddTab"
-        component={EmptyScreen}
-        options={{
-          title: "",
-          tabBarIcon: () => <AddButton />,
-          tabBarButton: (props) => (
-            <Pressable
-              {...props}
-              style={styles.addTabButton}
-            />
-          ),
-        }}
-        listeners={({ navigation }) => ({
-          tabPress: (e) => {
-            e.preventDefault();
-            navigation.navigate("ScanReceipt");
+    <View style={{ flex: 1 }}>
+      <Tab.Navigator
+        initialRouteName="PantryTab"
+        screenOptions={{
+          tabBarActiveTintColor: theme.tabIconSelected,
+          tabBarInactiveTintColor: theme.tabIconDefault,
+          tabBarStyle: {
+            position: "absolute",
+            backgroundColor: Platform.select({
+              ios: "transparent",
+              android: Colors.light.backgroundRoot,
+            }),
+            borderTopWidth: 0,
+            elevation: 0,
+            height: 80,
           },
-        })}
-      />
-      <Tab.Screen
-        name="ListTab"
-        component={ShoppingStackNavigator}
-        options={{
-          title: "LIST",
-          tabBarIcon: ({ color, size }) => (
-            <View>
-              <Feather name="list" size={size} color={color} />
-              <ShoppingBadge count={uncheckedCount} />
-            </View>
-          ),
+          tabBarBackground: () =>
+            Platform.OS === "ios" ? (
+              <BlurView
+                intensity={100}
+                tint={isDark ? "dark" : "light"}
+                style={StyleSheet.absoluteFill}
+              />
+            ) : null,
+          headerShown: false,
+          tabBarLabelStyle: {
+            fontSize: 11,
+            fontWeight: "500",
+          },
         }}
-      />
-    </Tab.Navigator>
+      >
+        <Tab.Screen
+          name="PantryTab"
+          component={PantryStackNavigator}
+          options={{
+            title: "PANTRY",
+            tabBarIcon: ({ color, size }) => (
+              <Feather name="box" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tab.Screen
+          name="SavedTab"
+          component={SavedStackNavigator}
+          options={{
+            title: "SAVED",
+            tabBarIcon: ({ color, size }) => (
+              <Feather name="heart" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tab.Screen
+          name="ListTab"
+          component={ShoppingStackNavigator}
+          options={{
+            title: "LIST",
+            tabBarIcon: ({ color, size }) => (
+              <View>
+                <Feather name="list" size={size} color={color} />
+                <ShoppingBadge count={uncheckedCount} />
+              </View>
+            ),
+          }}
+        />
+      </Tab.Navigator>
+      <FloatingAddButton />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  addButtonContainer: {
+  floatingAddButton: {
     position: "absolute",
-    top: -20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  addButton: {
+    right: Spacing.lg,
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -152,14 +145,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 8,
-  },
-  addTabButton: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+    zIndex: 100,
   },
   badge: {
     position: "absolute",
