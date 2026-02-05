@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useLayoutEffect } from "react";
 import {
   View,
   ScrollView,
@@ -12,6 +12,7 @@ import type { RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
+import { HeaderButton } from "@react-navigation/elements";
 import { Feather } from "@expo/vector-icons";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
@@ -104,6 +105,103 @@ export default function RecipeDetailScreen() {
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
   const [showBanner, setShowBanner] = useState(false);
   const [isEnhancing, setIsEnhancing] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isCheckingSaved, setIsCheckingSaved] = useState(true);
+
+  useEffect(() => {
+    const checkIfSaved = async () => {
+      try {
+        const baseUrl = getApiUrl();
+        const response = await fetch(
+          new URL(`/api/saved-recipes/check/${recipe.id}`, baseUrl).toString()
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setIsSaved(data.isSaved);
+        }
+      } catch (error) {
+        console.error("Error checking saved status:", error);
+      } finally {
+        setIsCheckingSaved(false);
+      }
+    };
+    checkIfSaved();
+  }, [recipe.id]);
+
+  const handleSaveRecipe = async () => {
+    if (isSaving || isSaved) return;
+    
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsSaving(true);
+    
+    try {
+      const baseUrl = getApiUrl();
+      
+      // First, get enhanced steps from AI
+      let enhancedSteps = null;
+      try {
+        const enhanceResponse = await fetch(
+          new URL("/api/enhance-instructions", baseUrl).toString(),
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              instructions: recipe.instructions,
+              recipeName: recipe.name,
+            }),
+          }
+        );
+        if (enhanceResponse.ok) {
+          const enhanceData = await enhanceResponse.json();
+          enhancedSteps = enhanceData.steps;
+        }
+      } catch (enhanceError) {
+        console.error("Error enhancing instructions:", enhanceError);
+      }
+
+      // Save the recipe with enhanced steps
+      const response = await fetch(
+        new URL("/api/saved-recipes", baseUrl).toString(),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ recipe, enhancedSteps }),
+        }
+      );
+      
+      if (response.ok) {
+        setIsSaved(true);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (error) {
+      console.error("Error saving recipe:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <HeaderButton
+          onPress={handleSaveRecipe}
+          disabled={isSaving || isCheckingSaved}
+        >
+          {isSaving ? (
+            <ActivityIndicator size="small" color={theme.text} />
+          ) : (
+            <Feather
+              name={isSaved ? "heart" : "heart"}
+              size={24}
+              color={isSaved ? Colors.light.expiredRed : theme.text}
+              style={{ opacity: isSaved ? 1 : 0.7 }}
+            />
+          )}
+        </HeaderButton>
+      ),
+    });
+  }, [navigation, isSaved, isSaving, isCheckingSaved, theme.text]);
 
   const handleStartCooking = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
