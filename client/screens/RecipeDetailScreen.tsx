@@ -13,7 +13,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { HeaderButton } from "@react-navigation/elements";
-import { Feather } from "@expo/vector-icons";
+import { Feather, AntDesign } from "@expo/vector-icons";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
@@ -189,13 +189,12 @@ export default function RecipeDetailScreen() {
           disabled={isSaving || isCheckingSaved}
         >
           {isSaving ? (
-            <ActivityIndicator size="small" color={theme.text} />
+            <ActivityIndicator size="small" color={Colors.light.expiredRed} />
           ) : (
-            <Feather
-              name={isSaved ? "heart" : "heart"}
+            <AntDesign
+              name={isSaved ? "heart" : "hearto"}
               size={24}
               color={isSaved ? Colors.light.expiredRed : theme.text}
-              style={{ opacity: isSaved ? 1 : 0.7 }}
             />
           )}
         </HeaderButton>
