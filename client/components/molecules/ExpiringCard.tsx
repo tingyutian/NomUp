@@ -87,7 +87,7 @@ export function ExpiringCard({ item, onPress, testID }: ExpiringCardProps) {
       </ThemedText>
       <View style={styles.footer}>
         <ThemedText type="small" style={{ color: theme.textSecondary }}>
-          {item.quantity} {item.unit}
+          {item.quantity > 1 ? `${item.quantity} x ${item.unitAmount || 1} ${item.unit}` : `${item.unitAmount || 1} ${item.unit}`}
         </ThemedText>
         <Feather name="chevron-right" size={16} color={theme.textSecondary} />
       </View>
