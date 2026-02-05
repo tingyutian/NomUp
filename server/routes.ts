@@ -735,6 +735,48 @@ Return a JSON array of steps.`;
     }
   });
 
+  // Get a specific saved recipe (to check for enhanced steps)
+  app.get("/api/saved-recipes/:recipeId", async (req, res) => {
+    try {
+      const { recipeId } = req.params;
+      const [recipe] = await db.select().from(savedRecipes).where(eq(savedRecipes.recipeId, recipeId));
+      if (!recipe) {
+        return res.status(404).json({ error: "Recipe not found" });
+      }
+      res.json({ recipe });
+    } catch (error) {
+      console.error("Error fetching saved recipe:", error);
+      res.status(500).json({ error: "Failed to fetch saved recipe" });
+    }
+  });
+
+  // Update enhanced steps for a saved recipe
+  app.patch("/api/saved-recipes/:recipeId/steps", async (req, res) => {
+    try {
+      const { recipeId } = req.params;
+      const { enhancedSteps } = req.body;
+      
+      if (!enhancedSteps) {
+        return res.status(400).json({ error: "Enhanced steps are required" });
+      }
+
+      const [updated] = await db
+        .update(savedRecipes)
+        .set({ enhancedSteps })
+        .where(eq(savedRecipes.recipeId, recipeId))
+        .returning();
+      
+      if (!updated) {
+        return res.status(404).json({ error: "Recipe not found" });
+      }
+      
+      res.json({ recipe: updated });
+    } catch (error) {
+      console.error("Error updating saved recipe steps:", error);
+      res.status(500).json({ error: "Failed to update saved recipe steps" });
+    }
+  });
+
   // Delete a saved recipe
   app.delete("/api/saved-recipes/:recipeId", async (req, res) => {
     try {
