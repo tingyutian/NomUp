@@ -17,6 +17,7 @@ import { HeaderButton } from "@react-navigation/elements";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
+import { useQueryClient } from "@tanstack/react-query";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useApp } from "@/context/AppContext";
@@ -101,6 +102,7 @@ export default function RecipeDetailScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const { addToShoppingList, addMultipleToShoppingList, shoppingList } = useApp();
+  const queryClient = useQueryClient();
   const { recipe } = route.params;
   
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
@@ -159,6 +161,7 @@ export default function RecipeDetailScreen() {
       if (response.ok) {
         setIsSaved(true);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        queryClient.invalidateQueries({ queryKey: ["/api/saved-recipes"] });
       }
     } catch (error) {
       console.error("Error saving recipe:", error);
@@ -182,6 +185,7 @@ export default function RecipeDetailScreen() {
       if (response.ok) {
         setIsSaved(false);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        queryClient.invalidateQueries({ queryKey: ["/api/saved-recipes"] });
       }
     } catch (error) {
       console.error("Error unsaving recipe:", error);
