@@ -63,8 +63,12 @@ export function ItemDetailModal({
   const handleFindRecipes = () => {
     if (!item) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const itemId = item.id;
+    const itemName = item.name;
     onClose();
-    navigation.navigate("RecipeFeed", { itemId: item.id, itemName: item.name });
+    setTimeout(() => {
+      navigation.navigate("RecipeFeed", { itemId, itemName });
+    }, 100);
   };
   
   const [viewMode, setViewMode] = useState<ViewMode>("detail");
