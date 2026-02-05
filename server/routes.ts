@@ -1,6 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "node:http";
 import { GoogleGenAI, Type } from "@google/genai";
+import { eq } from "drizzle-orm";
+import { db } from "./db";
+import { savedRecipes } from "@shared/schema";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
@@ -670,6 +673,77 @@ Return a JSON array of steps.`;
     } catch (error) {
       console.error("Error enhancing instructions:", error);
       res.status(500).json({ error: "Failed to enhance instructions" });
+    }
+  });
+
+  // Get all saved recipes
+  app.get("/api/saved-recipes", async (req, res) => {
+    try {
+      const recipes = await db.select().from(savedRecipes).orderBy(savedRecipes.savedAt);
+      res.json({ recipes: recipes.reverse() });
+    } catch (error) {
+      console.error("Error fetching saved recipes:", error);
+      res.status(500).json({ error: "Failed to fetch saved recipes" });
+    }
+  });
+
+  // Check if a recipe is saved
+  app.get("/api/saved-recipes/check/:recipeId", async (req, res) => {
+    try {
+      const { recipeId } = req.params;
+      const existing = await db.select().from(savedRecipes).where(eq(savedRecipes.recipeId, recipeId));
+      res.json({ isSaved: existing.length > 0 });
+    } catch (error) {
+      console.error("Error checking saved recipe:", error);
+      res.status(500).json({ error: "Failed to check saved recipe" });
+    }
+  });
+
+  // Save a recipe (with optional enhanced steps)
+  app.post("/api/saved-recipes", async (req, res) => {
+    try {
+      const { recipe, enhancedSteps } = req.body;
+      
+      if (!recipe || !recipe.id || !recipe.name) {
+        return res.status(400).json({ error: "Recipe data is required" });
+      }
+
+      // Check if already saved
+      const existing = await db.select().from(savedRecipes).where(eq(savedRecipes.recipeId, recipe.id));
+      if (existing.length > 0) {
+        return res.status(400).json({ error: "Recipe already saved" });
+      }
+
+      const [saved] = await db.insert(savedRecipes).values({
+        recipeId: recipe.id,
+        name: recipe.name,
+        thumbnail: recipe.thumbnail || null,
+        category: recipe.category || null,
+        instructions: recipe.instructions || null,
+        matchScore: recipe.matchScore || 0,
+        matchedIngredients: recipe.matchedIngredients || [],
+        missingIngredients: recipe.missingIngredients || [],
+        ingredients: recipe.ingredients || [],
+        stats: recipe.stats || null,
+        enhancedSteps: enhancedSteps || null,
+      }).returning();
+
+      res.json({ recipe: saved });
+    } catch (error) {
+      console.error("Error saving recipe:", error);
+      res.status(500).json({ error: "Failed to save recipe" });
+    }
+  });
+
+  // Delete a saved recipe
+  app.delete("/api/saved-recipes/:recipeId", async (req, res) => {
+    try {
+      const { recipeId } = req.params;
+      await db.delete(savedRecipes).where(eq(savedRecipes.recipeId, recipeId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting saved recipe:", error);
+      res.status(500).json({ error: "Failed to delete saved recipe" });
     }
   });
 
