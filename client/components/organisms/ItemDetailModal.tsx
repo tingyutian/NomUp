@@ -78,6 +78,7 @@ export function ItemDetailModal({
   
   const [editName, setEditName] = useState("");
   const [editCategory, setEditCategory] = useState("");
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [editExpiresIn, setEditExpiresIn] = useState(7);
   const [editQuantity, setEditQuantity] = useState(1);
   const [editStorageLocation, setEditStorageLocation] = useState<"fridge" | "freezer" | "pantry">("fridge");
@@ -88,6 +89,7 @@ export function ItemDetailModal({
       setConsumptionAmount(item.usedAmount);
       setEditName(item.name);
       setEditCategory(item.category);
+      setShowCategoryDropdown(false);
       setEditExpiresIn(item.expiresIn);
       setEditQuantity(item.quantity);
       setEditStorageLocation(item.storageLocation);
@@ -266,28 +268,43 @@ export function ItemDetailModal({
         <ThemedText type="small" style={[styles.label, { color: theme.textSecondary }]}>
           Category
         </ThemedText>
-        <View style={styles.categoryGrid}>
-          {categories.map((cat) => (
-            <Pressable
-              key={cat}
-              onPress={() => setEditCategory(cat)}
-              style={[
-                styles.categoryChip,
-                {
-                  backgroundColor: editCategory.toLowerCase() === cat.toLowerCase() ? theme.text : theme.backgroundDefault,
-                  borderColor: theme.divider,
-                },
-              ]}
-            >
-              <ThemedText
-                type="small"
-                style={{ color: editCategory.toLowerCase() === cat.toLowerCase() ? theme.buttonText : theme.text }}
+        <Pressable
+          onPress={() => setShowCategoryDropdown(!showCategoryDropdown)}
+          style={[
+            styles.dropdownButton,
+            {
+              backgroundColor: theme.backgroundDefault,
+              borderColor: theme.divider,
+            },
+          ]}
+          testID="dropdown-category-edit"
+        >
+          <ThemedText type="body">{editCategory}</ThemedText>
+          <Feather name={showCategoryDropdown ? "chevron-up" : "chevron-down"} size={18} color={theme.textSecondary} />
+        </Pressable>
+        {showCategoryDropdown ? (
+          <View style={[styles.dropdownList, { backgroundColor: theme.backgroundDefault, borderColor: theme.divider }]}>
+            {categories.map((cat) => (
+              <Pressable
+                key={cat}
+                onPress={() => {
+                  setEditCategory(cat);
+                  setShowCategoryDropdown(false);
+                }}
+                style={[
+                  styles.dropdownItem,
+                  editCategory.toLowerCase() === cat.toLowerCase() ? { backgroundColor: theme.backgroundSecondary } : null,
+                ]}
+                testID={`dropdown-edit-option-${cat.toLowerCase()}`}
               >
-                {cat}
-              </ThemedText>
-            </Pressable>
-          ))}
-        </View>
+                <ThemedText type="body" style={{ color: editCategory.toLowerCase() === cat.toLowerCase() ? theme.text : theme.textSecondary }}>
+                  {cat}
+                </ThemedText>
+                {editCategory.toLowerCase() === cat.toLowerCase() ? <Feather name="check" size={16} color={theme.text} /> : null}
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.field}>
@@ -586,16 +603,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     fontSize: 16,
   },
-  categoryGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: Spacing.sm,
-  },
-  categoryChip: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
+  dropdownButton: {
+    height: 48,
+    borderRadius: BorderRadius.sm,
     borderWidth: 1,
+    paddingHorizontal: Spacing.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  dropdownList: {
+    marginTop: Spacing.xs,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  dropdownItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
   },
   storageOptions: {
     flexDirection: "row",
