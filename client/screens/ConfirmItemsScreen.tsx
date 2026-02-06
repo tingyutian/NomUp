@@ -6,7 +6,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
 import { ScannedItem } from "@/components/molecules/ScannedItem";
-import { EditItemModal } from "@/components/organisms/EditItemModal";
+import { AddItemModal } from "@/components/organisms/AddItemModal";
 import { Badge } from "@/components/atoms/Badge";
 import { useTheme } from "@/hooks/useTheme";
 import { useApp, GroceryItem } from "@/context/AppContext";
@@ -86,12 +86,12 @@ export default function ConfirmItemsScreen({ route, navigation }: Props) {
     );
   };
 
-  const handleEditSave = (data: { name: string; quantity: number; expiresIn: number }) => {
+  const handleEditSave = (data: { name: string; quantity: number; unit: string; category: string; expiresIn: number; storageLocation: "fridge" | "freezer" | "pantry" }) => {
     if (!editingItem) return;
     setItems((prev) =>
       prev.map((item) =>
         item.id === editingItem.id
-          ? { ...item, ...data }
+          ? { ...item, name: data.name, quantity: data.quantity, expiresIn: data.expiresIn, category: data.category, unit: data.unit }
           : item
       )
     );
@@ -216,13 +216,20 @@ export default function ConfirmItemsScreen({ route, navigation }: Props) {
         </Button>
       </Animated.View>
 
-      <EditItemModal
+      <AddItemModal
         visible={!!editingItem}
         onClose={() => setEditingItem(null)}
-        onSave={handleEditSave}
-        initialName={editingItem?.name}
-        initialQuantity={editingItem?.quantity}
-        initialExpiresIn={editingItem?.expiresIn}
+        onAdd={handleEditSave}
+        mode="grocery"
+        editMode
+        initialValues={{
+          name: editingItem?.name,
+          quantity: editingItem?.quantity,
+          unit: editingItem?.unit,
+          category: editingItem?.category,
+          expiresIn: editingItem?.expiresIn,
+          storageLocation: getStorageLocation(editingItem?.category || "Pantry"),
+        }}
       />
     </View>
   );
