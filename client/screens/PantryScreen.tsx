@@ -13,7 +13,6 @@ import { SwipeableGroceryItem } from "@/components/molecules/SwipeableGroceryIte
 import { ExpiringCard } from "@/components/molecules/ExpiringCard";
 import { ItemDetailModal } from "@/components/organisms/ItemDetailModal";
 import { DeleteConfirmModal } from "@/components/organisms/DeleteConfirmModal";
-import { AddItemModal } from "@/components/organisms/AddItemModal";
 import { ConfirmationBanner } from "@/components/atoms/ConfirmationBanner";
 import { IconButton } from "@/components/atoms/IconButton";
 import { useTheme } from "@/hooks/useTheme";
@@ -49,7 +48,6 @@ export default function PantryScreen({ navigation }: Props) {
   const [activeTab, setActiveTab] = useState<StorageTab>("fridge");
   const [sortBy, setSortBy] = useState<SortOption>("expiration");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false);
   
   const [selectedItem, setSelectedItem] = useState<GroceryItem | null>(null);
   const [showItemModal, setShowItemModal] = useState(false);
@@ -85,28 +83,6 @@ export default function PantryScreen({ navigation }: Props) {
       }
     });
   }, [groceries, activeTab, sortBy]);
-
-  const handleAddItem = async (data: any) => {
-    const today = new Date();
-    const expirationDate = new Date(today);
-    expirationDate.setDate(today.getDate() + data.expiresIn);
-
-    const newItem: GroceryItem = {
-      id: Date.now().toString(),
-      name: data.name,
-      category: data.category,
-      quantity: data.quantity,
-      unit: data.unit,
-      unitAmount: data.unitAmount || 1,
-      price: 0,
-      expiresIn: data.expiresIn,
-      expirationDate: expirationDate.toISOString(),
-      storageLocation: data.storageLocation,
-      addedAt: new Date().toISOString(),
-      usedAmount: 0,
-    };
-    await addGroceries([newItem]);
-  };
 
   const handleItemPress = (item: GroceryItem) => {
     setSelectedItem(item);
@@ -312,13 +288,6 @@ export default function PantryScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
         scrollIndicatorInsets={{ bottom: insets.bottom }}
         keyboardShouldPersistTaps="handled"
-      />
-
-      <AddItemModal
-        visible={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onAdd={handleAddItem}
-        mode="grocery"
       />
 
       <ItemDetailModal
