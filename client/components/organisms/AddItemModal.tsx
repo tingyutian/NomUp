@@ -216,9 +216,20 @@ export function AddItemModal({
                     >
                       <Feather name="minus" size={16} color={theme.text} />
                     </Pressable>
-                    <ThemedText type="bodyMedium" style={styles.quantityText}>
-                      {expiresIn}d
-                    </ThemedText>
+                    <TextInput
+                      value={String(expiresIn)}
+                      onChangeText={(text) => {
+                        const num = parseInt(text, 10);
+                        if (!isNaN(num) && num >= 1) {
+                          setExpiresIn(num);
+                        } else if (text === "") {
+                          setExpiresIn(1);
+                        }
+                      }}
+                      keyboardType="number-pad"
+                      style={[styles.expiresInput, { color: theme.text, borderColor: theme.divider }]}
+                      testID="input-expires-in"
+                    />
                     <Pressable
                       onPress={() => setExpiresIn(expiresIn + 1)}
                       style={[styles.quantityButton, { borderColor: theme.divider }]}
@@ -346,6 +357,16 @@ const styles = StyleSheet.create({
   quantityText: {
     minWidth: 60,
     textAlign: "center",
+  },
+  expiresInput: {
+    minWidth: 60,
+    height: 40,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    textAlign: "center",
+    fontSize: 16,
+    fontFamily: "Inter_500Medium",
+    marginHorizontal: Spacing.md,
   },
   categoryGrid: {
     flexDirection: "row",
