@@ -61,7 +61,10 @@ function FloatingAddButton({ onAddManually }: { onAddManually: () => void }) {
           style={styles.choiceModalOverlay}
           onPress={() => setShowChoiceModal(false)}
         >
-          <View style={[styles.choiceModalContent, { backgroundColor: theme.backgroundDefault }]}>
+          <Pressable
+            style={[styles.choiceModalContent, { backgroundColor: theme.backgroundDefault }]}
+            onPress={(e) => e.stopPropagation()}
+          >
             <ThemedText type="h4" style={styles.choiceModalTitle}>Add Items</ThemedText>
 
             <Pressable
@@ -105,7 +108,7 @@ function FloatingAddButton({ onAddManually }: { onAddManually: () => void }) {
               </View>
               <Feather name="chevron-right" size={20} color={theme.textSecondary} />
             </Pressable>
-          </View>
+          </Pressable>
         </Pressable>
       </Modal>
     </>
