@@ -21,8 +21,10 @@ export const Colors = {
     dairy: "#BBDEFB",
     bakery: "#FFF9C4",
     meat: "#F8BBD0",
-    pantry: "#D7CCC8",
-    frozen: "#B3E5FC",
+    beverages: "#E1BEE7",
+    grains: "#FFE0B2",
+    snacks: "#FFCCBC",
+    condiments: "#B2DFDB",
 
     // Semantic Colors
     expiringYellow: "#FFF176",
@@ -53,8 +55,10 @@ export const Colors = {
     dairy: "#1565C0",
     bakery: "#F9A825",
     meat: "#C2185B",
-    pantry: "#5D4037",
-    frozen: "#0277BD",
+    beverages: "#7B1FA2",
+    grains: "#FF8F00",
+    snacks: "#E64A19",
+    condiments: "#00796B",
 
     expiringYellow: "#FDD835",
     expiringOrange: "#FB8C00",
@@ -197,6 +201,8 @@ export const CategoryColors: Record<string, { light: string; dark: string }> = {
   dairy: { light: Colors.light.dairy, dark: Colors.dark.dairy },
   bakery: { light: Colors.light.bakery, dark: Colors.dark.bakery },
   meat: { light: Colors.light.meat, dark: Colors.dark.meat },
-  pantry: { light: Colors.light.pantry, dark: Colors.dark.pantry },
-  frozen: { light: Colors.light.frozen, dark: Colors.dark.frozen },
+  beverages: { light: Colors.light.beverages, dark: Colors.dark.beverages },
+  grains: { light: Colors.light.grains, dark: Colors.dark.grains },
+  snacks: { light: Colors.light.snacks, dark: Colors.dark.snacks },
+  condiments: { light: Colors.light.condiments, dark: Colors.dark.condiments },
 };

@@ -39,7 +39,7 @@ interface AddItemModalProps {
   };
 }
 
-const categories = ["Produce", "Dairy", "Bakery", "Meat", "Pantry", "Frozen"];
+const categories = ["Produce", "Dairy", "Bakery", "Meat", "Beverages", "Grains", "Snacks", "Condiments"];
 const storageLocations = [
   { key: "fridge" as const, label: "Fridge" },
   { key: "freezer" as const, label: "Freezer" },

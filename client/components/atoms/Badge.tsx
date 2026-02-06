@@ -16,8 +16,10 @@ const categoryColors: Record<string, string> = {
   dairy: Colors.light.dairy,
   bakery: Colors.light.bakery,
   meat: Colors.light.meat,
-  pantry: Colors.light.pantry,
-  frozen: Colors.light.frozen,
+  beverages: Colors.light.beverages,
+  grains: Colors.light.grains,
+  snacks: Colors.light.snacks,
+  condiments: Colors.light.condiments,
 };
 
 export function Badge({ label, variant = "default", category, style }: BadgeProps) {

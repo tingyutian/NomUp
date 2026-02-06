@@ -38,7 +38,7 @@ interface ItemDetailModalProps {
 
 type ViewMode = "detail" | "edit";
 
-const categories = ["Produce", "Dairy", "Bakery", "Meat", "Pantry", "Frozen", "Beverages"];
+const categories = ["Produce", "Dairy", "Bakery", "Meat", "Beverages", "Grains", "Snacks", "Condiments"];
 
 const STORAGE_OPTIONS: { value: "fridge" | "freezer" | "pantry"; label: string }[] = [
   { value: "fridge", label: "Fridge" },
