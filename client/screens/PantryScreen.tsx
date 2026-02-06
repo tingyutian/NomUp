@@ -51,6 +51,15 @@ export default function PantryScreen({ navigation }: Props) {
   
   const [selectedItem, setSelectedItem] = useState<GroceryItem | null>(null);
   const [showItemModal, setShowItemModal] = useState(false);
+
+  useEffect(() => {
+    if (selectedItem) {
+      const updated = groceries.find(g => g.id === selectedItem.id);
+      if (updated) {
+        setSelectedItem(updated);
+      }
+    }
+  }, [groceries]);
   
   const [itemToDelete, setItemToDelete] = useState<GroceryItem | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
