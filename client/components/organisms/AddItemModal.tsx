@@ -60,11 +60,13 @@ export function AddItemModal({
   const [quantity, setQuantity] = useState(1);
   const [unit, setUnit] = useState("units");
   const [category, setCategory] = useState("Produce");
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [expiresIn, setExpiresIn] = useState(7);
   const [storageLocation, setStorageLocation] = useState<"fridge" | "freezer" | "pantry">("fridge");
 
   useEffect(() => {
     if (visible) {
+      setShowCategoryDropdown(false);
       if (editMode && initialValues) {
         setName(initialValues.name || "");
         setQuantity(initialValues.quantity || 1);
@@ -170,33 +172,43 @@ export function AddItemModal({
                   <ThemedText type="small" style={[styles.label, { color: theme.textSecondary }]}>
                     Category
                   </ThemedText>
-                  <View style={styles.categoryGrid}>
-                    {categories.map((cat) => (
-                      <Pressable
-                        key={cat}
-                        onPress={() => setCategory(cat)}
-                        style={[
-                          styles.categoryChip,
-                          {
-                            backgroundColor:
-                              category === cat
-                                ? theme.text
-                                : theme.backgroundDefault,
-                            borderColor: theme.divider,
-                          },
-                        ]}
-                      >
-                        <ThemedText
-                          type="small"
-                          style={{
-                            color: category === cat ? theme.buttonText : theme.text,
+                  <Pressable
+                    onPress={() => setShowCategoryDropdown(!showCategoryDropdown)}
+                    style={[
+                      styles.dropdownButton,
+                      {
+                        backgroundColor: theme.backgroundDefault,
+                        borderColor: theme.divider,
+                      },
+                    ]}
+                    testID="dropdown-category"
+                  >
+                    <ThemedText type="body">{category}</ThemedText>
+                    <Feather name={showCategoryDropdown ? "chevron-up" : "chevron-down"} size={18} color={theme.textSecondary} />
+                  </Pressable>
+                  {showCategoryDropdown ? (
+                    <View style={[styles.dropdownList, { backgroundColor: theme.backgroundDefault, borderColor: theme.divider }]}>
+                      {categories.map((cat) => (
+                        <Pressable
+                          key={cat}
+                          onPress={() => {
+                            setCategory(cat);
+                            setShowCategoryDropdown(false);
                           }}
+                          style={[
+                            styles.dropdownItem,
+                            category === cat ? { backgroundColor: theme.backgroundSecondary } : null,
+                          ]}
+                          testID={`dropdown-option-${cat.toLowerCase()}`}
                         >
-                          {cat}
-                        </ThemedText>
-                      </Pressable>
-                    ))}
-                  </View>
+                          <ThemedText type="body" style={{ color: category === cat ? theme.text : theme.textSecondary }}>
+                            {cat}
+                          </ThemedText>
+                          {category === cat ? <Feather name="check" size={16} color={theme.text} /> : null}
+                        </Pressable>
+                      ))}
+                    </View>
+                  ) : null}
                 </View>
 
                 <View style={styles.field}>
@@ -408,16 +420,27 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     marginHorizontal: Spacing.md,
   },
-  categoryGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: Spacing.sm,
-  },
-  categoryChip: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
+  dropdownButton: {
+    height: 48,
+    borderRadius: BorderRadius.sm,
     borderWidth: 1,
+    paddingHorizontal: Spacing.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  dropdownList: {
+    marginTop: Spacing.xs,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  dropdownItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
   },
   storageOptions: {
     flexDirection: "row",
