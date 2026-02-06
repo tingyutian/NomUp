@@ -81,7 +81,6 @@ export function ItemDetailModal({
   const [editExpiresIn, setEditExpiresIn] = useState(7);
   const [editQuantity, setEditQuantity] = useState(1);
   const [editStorageLocation, setEditStorageLocation] = useState<"fridge" | "freezer" | "pantry">("fridge");
-  const [showStorageDropdown, setShowStorageDropdown] = useState(false);
 
   useEffect(() => {
     if (visible && item) {
@@ -92,7 +91,6 @@ export function ItemDetailModal({
       setEditExpiresIn(item.expiresIn);
       setEditQuantity(item.quantity);
       setEditStorageLocation(item.storageLocation);
-      setShowStorageDropdown(false);
       setShowDestructiveConfirm(false);
       setDestructiveAction(null);
     }
@@ -268,13 +266,13 @@ export function ItemDetailModal({
         <ThemedText type="small" style={[styles.label, { color: theme.textSecondary }]}>
           Category
         </ThemedText>
-        <View style={styles.categoryOptions}>
+        <View style={styles.categoryGrid}>
           {categories.map((cat) => (
             <Pressable
               key={cat}
               onPress={() => setEditCategory(cat)}
               style={[
-                styles.categoryOption,
+                styles.categoryChip,
                 {
                   backgroundColor: editCategory.toLowerCase() === cat.toLowerCase() ? theme.text : theme.backgroundDefault,
                   borderColor: theme.divider,
@@ -296,40 +294,36 @@ export function ItemDetailModal({
         <ThemedText type="small" style={[styles.label, { color: theme.textSecondary }]}>
           Storage Location
         </ThemedText>
-        <Pressable
-          onPress={() => setShowStorageDropdown(!showStorageDropdown)}
-          style={[
-            styles.dropdownButton,
-            {
-              backgroundColor: theme.backgroundDefault,
-              borderColor: theme.divider,
-            },
-          ]}
-        >
-          <ThemedText type="body">
-            {STORAGE_OPTIONS.find((o) => o.value === editStorageLocation)?.label || "Select"}
-          </ThemedText>
-          <Feather name={showStorageDropdown ? "chevron-up" : "chevron-down"} size={20} color={theme.text} />
-        </Pressable>
-        {showStorageDropdown ? (
-          <View style={[styles.dropdown, { backgroundColor: theme.backgroundDefault, borderColor: theme.divider }]}>
-            {STORAGE_OPTIONS.map((opt) => (
-              <Pressable
-                key={opt.value}
-                onPress={() => {
-                  setEditStorageLocation(opt.value);
-                  setShowStorageDropdown(false);
+        <View style={styles.storageOptions}>
+          {STORAGE_OPTIONS.map((opt) => (
+            <Pressable
+              key={opt.value}
+              onPress={() => setEditStorageLocation(opt.value)}
+              style={[
+                styles.storageChip,
+                {
+                  backgroundColor:
+                    editStorageLocation === opt.value
+                      ? theme.text
+                      : theme.backgroundDefault,
+                  borderColor: theme.divider,
+                },
+              ]}
+            >
+              <ThemedText
+                type="small"
+                style={{
+                  color:
+                    editStorageLocation === opt.value
+                      ? theme.buttonText
+                      : theme.text,
                 }}
-                style={[
-                  styles.dropdownItem,
-                  editStorageLocation === opt.value && { backgroundColor: theme.divider },
-                ]}
               >
-                <ThemedText type="body">{opt.label}</ThemedText>
-              </Pressable>
-            ))}
-          </View>
-        ) : null}
+                {opt.label}
+              </ThemedText>
+            </Pressable>
+          ))}
+        </View>
       </View>
 
       <View style={styles.field}>
@@ -341,16 +335,16 @@ export function ItemDetailModal({
             onPress={() => setEditQuantity(Math.max(1, editQuantity - 1))}
             style={[styles.quantityButton, { borderColor: theme.divider }]}
           >
-            <Feather name="minus" size={20} color={theme.text} />
+            <Feather name="minus" size={16} color={theme.text} />
           </Pressable>
-          <ThemedText type="h4" style={styles.quantityText}>
+          <ThemedText type="bodyMedium" style={styles.quantityText}>
             {editQuantity}
           </ThemedText>
           <Pressable
             onPress={() => setEditQuantity(editQuantity + 1)}
             style={[styles.quantityButton, { borderColor: theme.divider }]}
           >
-            <Feather name="plus" size={20} color={theme.text} />
+            <Feather name="plus" size={16} color={theme.text} />
           </Pressable>
         </View>
       </View>
@@ -364,7 +358,7 @@ export function ItemDetailModal({
             onPress={() => setEditExpiresIn(Math.max(0, editExpiresIn - 1))}
             style={[styles.quantityButton, { borderColor: theme.divider }]}
           >
-            <Feather name="minus" size={20} color={theme.text} />
+            <Feather name="minus" size={16} color={theme.text} />
           </Pressable>
           <TextInput
             value={String(editExpiresIn)}
@@ -384,7 +378,7 @@ export function ItemDetailModal({
             onPress={() => setEditExpiresIn(editExpiresIn + 1)}
             style={[styles.quantityButton, { borderColor: theme.divider }]}
           >
-            <Feather name="plus" size={20} color={theme.text} />
+            <Feather name="plus" size={16} color={theme.text} />
           </Pressable>
         </View>
       </View>
@@ -592,16 +586,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     fontSize: 16,
   },
-  categoryOptions: {
+  categoryGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: Spacing.sm,
   },
-  categoryOption: {
-    paddingHorizontal: Spacing.md,
+  categoryChip: {
+    paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
+  },
+  storageOptions: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+  },
+  storageChip: {
+    flex: 1,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    alignItems: "center",
   },
   quantityControls: {
     flexDirection: "row",
@@ -675,24 +680,5 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     borderWidth: 1,
     borderRadius: BorderRadius.md,
-  },
-  dropdownButton: {
-    height: 48,
-    borderRadius: BorderRadius.sm,
-    borderWidth: 1,
-    paddingHorizontal: Spacing.lg,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  dropdown: {
-    marginTop: Spacing.xs,
-    borderRadius: BorderRadius.sm,
-    borderWidth: 1,
-    overflow: "hidden",
-  },
-  dropdownItem: {
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
   },
 });
