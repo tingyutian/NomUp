@@ -11,6 +11,7 @@ Core features:
 - **Shopping Lists**: Manage shopping lists
 - **Consumption Logging**: Track food usage directly from item detail modals
 - **Swipe-to-Delete**: Swipe left on any item to reveal delete button with confirmation
+- **Unified Add/Edit Modal**: Single AddItemModal component handles both adding and editing items with consistent layout. Fields: Name → Category → Storage Location → Quantity/Unit → Expires In
 - **Item Detail Modal**: Tap items to view details, log consumption, edit, find recipes, or add to shopping list
 - **Recipe Discovery**: Recipe suggestions based on pantry items, accessible via book icon in ItemDetailModal. Uses TheMealDB API for recipes with optimized local fuzzy matching for ingredient scoring (no AI call for matching). Shows match percentage, "You Have" and "Need to Buy" sections, with ability to add missing ingredients to shopping list. Performance optimized: ingredient lookup table for 70+ common items, 5 recipe limit, under 1 second load times. Flow: ItemDetailModal (book icon) → RecipeFeedScreen → RecipeDetailScreen → CookingModeScreen → CookingCompleteScreen
 - **Saved Recipes**: Users can save favorite recipes via heart button in RecipeDetailScreen header. Saving generates and stores enhanced step-by-step instructions using AI. Saved recipes accessible via SAVED tab in bottom navigation. Displays recipes in grid layout matching RecipeFeed. Long-press on saved recipe opens confirmation modal for removal. Database table: `saved_recipes`
@@ -24,6 +25,8 @@ Core features:
 - Item display shows simplified format: "0.5 lb" for single items, "2 x 0.5 lb" only when quantity > 1
 - Price tracking is stored in data but currently hidden from UI
 - ShoppingListItem IDs use unique format: `${timestamp}-${index}-${random}` to prevent duplicates in batch additions
+- **Categories** (food type): Produce, Dairy, Bakery, Meat, Beverages, Grains, Snacks, Condiments — deliberately separated from storage locations
+- **Storage Locations** (where stored): Fridge, Freezer, Pantry — independent of category
 
 ## User Preferences
 
