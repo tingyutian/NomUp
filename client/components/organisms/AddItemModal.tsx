@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -28,6 +28,15 @@ interface AddItemModalProps {
     storageLocation: "fridge" | "freezer" | "pantry";
   }) => void;
   mode?: "grocery" | "shopping";
+  editMode?: boolean;
+  initialValues?: {
+    name?: string;
+    quantity?: number;
+    unit?: string;
+    category?: string;
+    expiresIn?: number;
+    storageLocation?: "fridge" | "freezer" | "pantry";
+  };
 }
 
 const categories = ["Produce", "Dairy", "Bakery", "Meat", "Pantry", "Frozen"];
@@ -42,6 +51,8 @@ export function AddItemModal({
   onClose,
   onAdd,
   mode = "grocery",
+  editMode = false,
+  initialValues,
 }: AddItemModalProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -52,7 +63,22 @@ export function AddItemModal({
   const [expiresIn, setExpiresIn] = useState(7);
   const [storageLocation, setStorageLocation] = useState<"fridge" | "freezer" | "pantry">("fridge");
 
-  const handleAdd = () => {
+  useEffect(() => {
+    if (visible) {
+      if (editMode && initialValues) {
+        setName(initialValues.name || "");
+        setQuantity(initialValues.quantity || 1);
+        setUnit(initialValues.unit || "units");
+        setCategory(initialValues.category || "Produce");
+        setExpiresIn(initialValues.expiresIn || 7);
+        setStorageLocation(initialValues.storageLocation || "fridge");
+      } else if (!editMode) {
+        resetForm();
+      }
+    }
+  }, [visible, editMode, initialValues]);
+
+  const handleSubmit = () => {
     if (!name.trim()) return;
     onAdd({
       name: name.trim(),
@@ -62,7 +88,9 @@ export function AddItemModal({
       expiresIn,
       storageLocation,
     });
-    resetForm();
+    if (!editMode) {
+      resetForm();
+    }
     onClose();
   };
 
@@ -73,6 +101,16 @@ export function AddItemModal({
     setCategory("Produce");
     setExpiresIn(7);
     setStorageLocation("fridge");
+  };
+
+  const getTitle = () => {
+    if (editMode) return "Edit Item";
+    return mode === "grocery" ? "Add Grocery" : "Add to List";
+  };
+
+  const getButtonLabel = () => {
+    if (editMode) return "Save Changes";
+    return mode === "grocery" ? "Add to Inventory" : "Add to List";
   };
 
   return (
@@ -98,9 +136,7 @@ export function AddItemModal({
         >
           <View style={styles.handle} />
           <View style={styles.header}>
-            <ThemedText type="h3">
-              {mode === "grocery" ? "Add Grocery" : "Add to List"}
-            </ThemedText>
+            <ThemedText type="h3">{getTitle()}</ThemedText>
             <Pressable onPress={onClose} style={styles.closeButton}>
               <Feather name="x" size={24} color={theme.text} />
             </Pressable>
@@ -124,50 +160,8 @@ export function AddItemModal({
                 ]}
                 placeholderTextColor={theme.textSecondary}
                 placeholder="Enter product name"
+                testID="input-product-name"
               />
-            </View>
-
-            <View style={styles.row}>
-              <View style={[styles.field, { flex: 1, marginRight: Spacing.md }]}>
-                <ThemedText type="small" style={[styles.label, { color: theme.textSecondary }]}>
-                  Quantity
-                </ThemedText>
-                <View style={styles.quantityControls}>
-                  <Pressable
-                    onPress={() => setQuantity(Math.max(1, quantity - 1))}
-                    style={[styles.quantityButton, { borderColor: theme.divider }]}
-                  >
-                    <Feather name="minus" size={16} color={theme.text} />
-                  </Pressable>
-                  <ThemedText type="bodyMedium" style={styles.quantityText}>
-                    {quantity}
-                  </ThemedText>
-                  <Pressable
-                    onPress={() => setQuantity(quantity + 1)}
-                    style={[styles.quantityButton, { borderColor: theme.divider }]}
-                  >
-                    <Feather name="plus" size={16} color={theme.text} />
-                  </Pressable>
-                </View>
-              </View>
-              <View style={[styles.field, { flex: 1 }]}>
-                <ThemedText type="small" style={[styles.label, { color: theme.textSecondary }]}>
-                  Unit
-                </ThemedText>
-                <TextInput
-                  value={unit}
-                  onChangeText={setUnit}
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: theme.backgroundDefault,
-                      color: theme.text,
-                      borderColor: theme.divider,
-                    },
-                  ]}
-                  placeholderTextColor={theme.textSecondary}
-                />
-              </View>
             </View>
 
             {mode === "grocery" ? (
@@ -202,40 +196,6 @@ export function AddItemModal({
                         </ThemedText>
                       </Pressable>
                     ))}
-                  </View>
-                </View>
-
-                <View style={styles.field}>
-                  <ThemedText type="small" style={[styles.label, { color: theme.textSecondary }]}>
-                    Expires In (days)
-                  </ThemedText>
-                  <View style={styles.quantityControls}>
-                    <Pressable
-                      onPress={() => setExpiresIn(Math.max(1, expiresIn - 1))}
-                      style={[styles.quantityButton, { borderColor: theme.divider }]}
-                    >
-                      <Feather name="minus" size={16} color={theme.text} />
-                    </Pressable>
-                    <TextInput
-                      value={String(expiresIn)}
-                      onChangeText={(text) => {
-                        const num = parseInt(text, 10);
-                        if (!isNaN(num) && num >= 1) {
-                          setExpiresIn(num);
-                        } else if (text === "") {
-                          setExpiresIn(1);
-                        }
-                      }}
-                      keyboardType="number-pad"
-                      style={[styles.expiresInput, { color: theme.text, borderColor: theme.divider }]}
-                      testID="input-expires-in"
-                    />
-                    <Pressable
-                      onPress={() => setExpiresIn(expiresIn + 1)}
-                      style={[styles.quantityButton, { borderColor: theme.divider }]}
-                    >
-                      <Feather name="plus" size={16} color={theme.text} />
-                    </Pressable>
                   </View>
                 </View>
 
@@ -277,12 +237,92 @@ export function AddItemModal({
               </>
             ) : null}
 
+            <View style={styles.row}>
+              <View style={[styles.field, { flex: 1, marginRight: Spacing.md }]}>
+                <ThemedText type="small" style={[styles.label, { color: theme.textSecondary }]}>
+                  Quantity
+                </ThemedText>
+                <View style={styles.quantityControls}>
+                  <Pressable
+                    onPress={() => setQuantity(Math.max(1, quantity - 1))}
+                    style={[styles.quantityButton, { borderColor: theme.divider }]}
+                  >
+                    <Feather name="minus" size={16} color={theme.text} />
+                  </Pressable>
+                  <ThemedText type="bodyMedium" style={styles.quantityText}>
+                    {quantity}
+                  </ThemedText>
+                  <Pressable
+                    onPress={() => setQuantity(quantity + 1)}
+                    style={[styles.quantityButton, { borderColor: theme.divider }]}
+                  >
+                    <Feather name="plus" size={16} color={theme.text} />
+                  </Pressable>
+                </View>
+              </View>
+              <View style={[styles.field, { flex: 1 }]}>
+                <ThemedText type="small" style={[styles.label, { color: theme.textSecondary }]}>
+                  Unit
+                </ThemedText>
+                <TextInput
+                  value={unit}
+                  onChangeText={setUnit}
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: theme.backgroundDefault,
+                      color: theme.text,
+                      borderColor: theme.divider,
+                    },
+                  ]}
+                  placeholderTextColor={theme.textSecondary}
+                  testID="input-unit"
+                />
+              </View>
+            </View>
+
+            {mode === "grocery" ? (
+              <View style={styles.field}>
+                <ThemedText type="small" style={[styles.label, { color: theme.textSecondary }]}>
+                  Expires In (days)
+                </ThemedText>
+                <View style={styles.quantityControls}>
+                  <Pressable
+                    onPress={() => setExpiresIn(Math.max(1, expiresIn - 1))}
+                    style={[styles.quantityButton, { borderColor: theme.divider }]}
+                  >
+                    <Feather name="minus" size={16} color={theme.text} />
+                  </Pressable>
+                  <TextInput
+                    value={String(expiresIn)}
+                    onChangeText={(text) => {
+                      const num = parseInt(text, 10);
+                      if (!isNaN(num) && num >= 1) {
+                        setExpiresIn(num);
+                      } else if (text === "") {
+                        setExpiresIn(1);
+                      }
+                    }}
+                    keyboardType="number-pad"
+                    style={[styles.expiresInput, { color: theme.text, borderColor: theme.divider }]}
+                    testID="input-expires-in"
+                  />
+                  <Pressable
+                    onPress={() => setExpiresIn(expiresIn + 1)}
+                    style={[styles.quantityButton, { borderColor: theme.divider }]}
+                  >
+                    <Feather name="plus" size={16} color={theme.text} />
+                  </Pressable>
+                </View>
+              </View>
+            ) : null}
+
             <Button
-              onPress={handleAdd}
-              style={styles.addButton}
+              onPress={handleSubmit}
+              style={styles.submitButton}
               disabled={!name.trim()}
             >
-              {mode === "grocery" ? "Add to Inventory" : "Add to List"}
+              {getButtonLabel()}
             </Button>
           </ScrollView>
         </View>
@@ -390,7 +430,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: "center",
   },
-  addButton: {
+  submitButton: {
     marginTop: Spacing.md,
     marginBottom: Spacing.xl,
   },
