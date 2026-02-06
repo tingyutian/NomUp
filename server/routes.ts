@@ -133,9 +133,10 @@ const categoryExpirationDefaults: Record<string, number> = {
   dairy: 14,
   bakery: 3,
   meat: 5,
-  pantry: 90,
-  frozen: 180,
   beverages: 30,
+  grains: 90,
+  snacks: 60,
+  condiments: 180,
 };
 
 function getDefaultExpiration(category: string): number {
@@ -229,7 +230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const prompt = `Analyze this grocery receipt image and extract grocery items. 
       For each item, identify:
       - name: the product name ONLY (clean it up, remove store codes, and REMOVE any weight/size info like "1LB", "12oz", "2kg" from the name)
-      - category: one of: Produce, Dairy, Bakery, Meat, Pantry, Frozen, Beverages
+      - category: one of: Produce, Dairy, Bakery, Meat, Beverages, Grains, Snacks, Condiments
       - price: the LINE TOTAL - the actual dollar amount paid for this item as shown on the receipt. This is NOT the unit price. For example, if the receipt shows "2 x Apples @ $1.50 = $3.00", the price should be 3.00 (the total paid), not 1.50.
       - quantity: the quantity purchased (default to 1 if not clear)
       - unit: the unit of measurement extracted from the product name or receipt (e.g., "lb", "oz", "kg", "g", "gal", "ct"). If a weight like "1LB" is in the product name, extract "lb" as the unit. Default to "units" only if no measurement is visible.
@@ -274,12 +275,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           items = parsed.map((item: any, index: number) => ({
             id: `${Date.now()}-${index}`,
             name: item.name || "Unknown Item",
-            category: item.category || "Pantry",
+            category: item.category || "Grains",
             price: parseFloat(item.price) || 0,
             quantity: parseInt(item.quantity) || 1,
             unit: item.unit || "units",
             unitAmount: parseFloat(item.unitAmount) || 1,
-            expiresIn: getDefaultExpiration(item.category || "Pantry"),
+            expiresIn: getDefaultExpiration(item.category || "Grains"),
           }));
           
           items = mergeDuplicateItems(items);
@@ -308,7 +309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       For each ingredient, provide:
       - name: the ingredient name
-      - category: one of: Produce, Dairy, Bakery, Meat, Pantry, Frozen, Beverages
+      - category: one of: Produce, Dairy, Bakery, Meat, Beverages, Grains, Snacks, Condiments
       
       Return ONLY a valid JSON array:
       [{"name": "...", "category": "..."}]

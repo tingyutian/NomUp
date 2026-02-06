@@ -115,7 +115,7 @@ export function SwipeableGroceryItem({
     return `Exp. in ${item.expiresIn}d`;
   };
 
-  const categoryColor = categoryColors[item.category.toLowerCase()] || Colors.light.pantry;
+  const categoryColor = categoryColors[item.category.toLowerCase()] || Colors.light.grains;
 
   const handleDeletePress = () => {
     translateX.value = withSpring(0, { damping: 20, stiffness: 200 });

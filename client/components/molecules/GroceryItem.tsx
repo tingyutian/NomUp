@@ -63,7 +63,7 @@ export function GroceryItemCard({
     return `Exp. in ${item.expiresIn}d`;
   };
 
-  const categoryColor = categoryColors[item.category.toLowerCase()] || Colors.light.pantry;
+  const categoryColor = categoryColors[item.category.toLowerCase()] || Colors.light.grains;
 
   return (
     <AnimatedPressable

@@ -48,7 +48,7 @@ export function ConsumptionItem({
   testID,
 }: ConsumptionItemProps) {
   const { theme } = useTheme();
-  const categoryColor = categoryColors[item.category.toLowerCase()] || Colors.light.pantry;
+  const categoryColor = categoryColors[item.category.toLowerCase()] || Colors.light.grains;
 
   const getExpirationText = () => {
     if (item.expiresIn <= 0) return "Expired";

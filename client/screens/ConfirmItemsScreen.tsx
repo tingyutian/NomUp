@@ -129,8 +129,7 @@ export default function ConfirmItemsScreen({ route, navigation }: Props) {
 
   const getStorageLocation = (category: string): "fridge" | "freezer" | "pantry" => {
     const lowerCategory = category.toLowerCase();
-    if (["dairy", "produce", "meat"].includes(lowerCategory)) return "fridge";
-    if (lowerCategory === "frozen") return "freezer";
+    if (["dairy", "produce", "meat", "beverages"].includes(lowerCategory)) return "fridge";
     return "pantry";
   };
 
@@ -228,7 +227,7 @@ export default function ConfirmItemsScreen({ route, navigation }: Props) {
           unit: editingItem?.unit,
           category: editingItem?.category,
           expiresIn: editingItem?.expiresIn,
-          storageLocation: getStorageLocation(editingItem?.category || "Pantry"),
+          storageLocation: getStorageLocation(editingItem?.category || "Grains"),
         }}
       />
     </View>
