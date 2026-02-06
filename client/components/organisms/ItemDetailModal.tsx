@@ -366,9 +366,20 @@ export function ItemDetailModal({
           >
             <Feather name="minus" size={20} color={theme.text} />
           </Pressable>
-          <ThemedText type="h4" style={styles.quantityText}>
-            {editExpiresIn}d
-          </ThemedText>
+          <TextInput
+            value={String(editExpiresIn)}
+            onChangeText={(text) => {
+              const num = parseInt(text, 10);
+              if (!isNaN(num) && num >= 0) {
+                setEditExpiresIn(num);
+              } else if (text === "") {
+                setEditExpiresIn(0);
+              }
+            }}
+            keyboardType="number-pad"
+            style={[styles.expiresInput, { color: theme.text, borderColor: theme.divider }]}
+            testID="input-edit-expires-in"
+          />
           <Pressable
             onPress={() => setEditExpiresIn(editExpiresIn + 1)}
             style={[styles.quantityButton, { borderColor: theme.divider }]}
@@ -608,6 +619,16 @@ const styles = StyleSheet.create({
   quantityText: {
     minWidth: 80,
     textAlign: "center",
+  },
+  expiresInput: {
+    minWidth: 80,
+    height: 48,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    textAlign: "center",
+    fontSize: 18,
+    fontFamily: "PlayfairDisplay_700Bold",
+    marginHorizontal: Spacing.md,
   },
   editActions: {
     flexDirection: "row",
