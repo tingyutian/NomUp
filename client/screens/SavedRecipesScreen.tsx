@@ -19,8 +19,10 @@ import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
+import { useApp } from "@/context/AppContext";
 import { getApiUrl } from "@/lib/query-client";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
+import { recomputeIngredientMatch } from "@/utils/ingredientMatcher";
 import type { RootStackParamList, ScoredRecipe } from "@/navigation/RootStackNavigator";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -131,6 +133,7 @@ export default function SavedRecipesScreen() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   
+  const { groceries } = useApp();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [recipeToDelete, setRecipeToDelete] = useState<SavedRecipeData | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -142,17 +145,20 @@ export default function SavedRecipesScreen() {
   const recipes = data?.recipes || [];
 
   const handleRecipePress = (savedRecipe: SavedRecipeData) => {
+    const ingredients = savedRecipe.ingredients || [];
+    const live = recomputeIngredientMatch(ingredients, groceries);
+
     const recipe: ScoredRecipe = {
       id: savedRecipe.recipeId,
       name: savedRecipe.name,
       thumbnail: savedRecipe.thumbnail || "",
       category: savedRecipe.category || "",
       instructions: savedRecipe.instructions || "",
-      matchScore: savedRecipe.matchScore,
-      matchedIngredients: savedRecipe.matchedIngredients || [],
-      missingIngredients: savedRecipe.missingIngredients || [],
-      ingredients: savedRecipe.ingredients || [],
-      stats: savedRecipe.stats || { total: 0, matched: 0, missing: 0 },
+      matchScore: live.matchScore,
+      matchedIngredients: live.matchedIngredients,
+      missingIngredients: live.missingIngredients,
+      ingredients,
+      stats: live.stats,
     };
     navigation.navigate("RecipeDetail", { recipe });
   };
