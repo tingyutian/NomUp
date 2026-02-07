@@ -171,7 +171,7 @@ export default function CookingCompleteScreen() {
       <View style={[styles.footer, { paddingBottom: insets.bottom + Spacing.md }]}>
         <Pressable
           onPress={handleSkip}
-          style={[styles.skipButton, { borderColor: theme.divider }]}
+          style={[styles.skipButton, { backgroundColor: theme.backgroundSecondary }]}
           testID="button-skip"
         >
           <ThemedText type="bodyMedium" style={{ color: theme.textSecondary }}>
@@ -265,7 +265,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: Spacing.lg,
     borderRadius: BorderRadius.lg,
-    borderWidth: 1,
   },
   confirmButton: {
     flex: 2,
