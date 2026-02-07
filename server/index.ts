@@ -173,6 +173,13 @@ function configureExpoAndLanding(app: express.Application) {
 
   log("Serving static Expo files with dynamic manifest routing");
 
+  const webDistPath = path.resolve(process.cwd(), "dist");
+  const hasWebBuild = fs.existsSync(path.join(webDistPath, "index.html"));
+
+  if (hasWebBuild) {
+    log("Web build found in dist/ — serving for desktop browsers");
+  }
+
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (req.path.startsWith("/api")) {
       return next();
@@ -188,6 +195,13 @@ function configureExpoAndLanding(app: express.Application) {
     }
 
     if (req.path === "/") {
+      const ua = req.header("user-agent") || "";
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(ua);
+
+      if (!isMobile && hasWebBuild) {
+        return res.sendFile(path.join(webDistPath, "index.html"));
+      }
+
       return serveLandingPage({
         req,
         res,
@@ -199,6 +213,9 @@ function configureExpoAndLanding(app: express.Application) {
     next();
   });
 
+  if (hasWebBuild) {
+    app.use(express.static(webDistPath));
+  }
   app.use("/assets", express.static(path.resolve(process.cwd(), "assets")));
   app.use(express.static(path.resolve(process.cwd(), "static-build")));
 
