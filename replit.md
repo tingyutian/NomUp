@@ -11,8 +11,8 @@ Core features:
 - **Shopping Lists**: Manage shopping lists
 - **Consumption Logging**: Track food usage directly from item detail modals
 - **Swipe-to-Delete**: Swipe left on any item to reveal delete button with confirmation
-- **Unified Add/Edit Modal**: Single AddItemModal component handles both adding and editing items with consistent layout. Fields: Name → Category → Storage Location → Quantity/Unit → Expires In
-- **Item Detail Modal**: Tap items to view details, log consumption, edit, find recipes, or add to shopping list
+- **Unified Add/Edit Modal**: Single AddItemModal component handles both adding and editing items with consistent layout. Fields: Name → Category (dropdown selector) → Storage Location (chips) → Quantity/Unit → Expires In
+- **Item Detail Modal**: Tap items to view details, log consumption, edit (with category dropdown selector), find recipes, or add to shopping list
 - **Recipe Discovery**: Recipe suggestions based on pantry items, accessible via book icon in ItemDetailModal. Uses TheMealDB API for recipes with optimized local fuzzy matching for ingredient scoring (no AI call for matching). Shows match percentage, "You Have" and "Need to Buy" sections, with ability to add missing ingredients to shopping list. Performance optimized: ingredient lookup table for 70+ common items, 5 recipe limit, under 1 second load times. Flow: ItemDetailModal (book icon) → RecipeFeedScreen → RecipeDetailScreen → CookingModeScreen → CookingCompleteScreen
 - **Saved Recipes**: Users can save favorite recipes via heart button in RecipeDetailScreen header. Saving generates and stores enhanced step-by-step instructions using AI. Saved recipes accessible via SAVED tab in bottom navigation. Displays recipes in grid layout matching RecipeFeed. Long-press on saved recipe opens confirmation modal for removal. Database table: `saved_recipes`
 - **Cooking Mode**: Full-screen step-by-step cooking instructions with swipeable navigation, progress dots, and metadata badges (duration, temperature). Accessed via "Start Cooking" button on RecipeDetailScreen. Uses Gemini AI to enhance plain text instructions into structured steps with extracted durations and temperatures. Features integrated cooking timers for steps with timing (e.g., "simmer for 30 minutes" becomes a step with a 30-minute timer)
@@ -51,7 +51,7 @@ Preferred communication style: Simple, everyday language.
 **Key Components**:
 - `SwipeableGroceryItem` - Grocery item card with swipe-to-delete gesture, simplified unit display
 - `ItemDetailModal` - Full-featured modal for viewing, editing, and managing items
-- `EditItemModal` - Edit modal with separate Category and Storage Location dropdown selectors
+- `EditItemModal` - Edit modal with Category dropdown selector and Storage Location chips
 - `DeleteConfirmModal` - Confirmation dialog for item deletion
 - `ConfirmationBanner` - Auto-dismissing success banner for actions like "Added to shopping list"
 
