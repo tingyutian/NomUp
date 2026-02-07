@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
-import { View, StyleSheet, FlatList, Pressable, TextInput, ScrollView, Modal } from "react-native";
+import { View, StyleSheet, FlatList, Pressable, TextInput, ScrollView, Modal, ActivityIndicator, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -17,6 +17,9 @@ import { ConfirmationBanner } from "@/components/atoms/ConfirmationBanner";
 import { IconButton } from "@/components/atoms/IconButton";
 import { useTheme } from "@/hooks/useTheme";
 import { useApp, GroceryItem } from "@/context/AppContext";
+import { Button } from "@/components/Button";
+import { getApiUrl } from "@/lib/query-client";
+import { getDemoGroceryItems, DEMO_RECIPES } from "@/data/demoData";
 import { BorderRadius, Spacing, Colors } from "@/constants/theme";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { PantryStackParamList } from "@/navigation/PantryStackNavigator";
@@ -66,6 +69,7 @@ export default function PantryScreen({ navigation }: Props) {
   
   const [showBanner, setShowBanner] = useState(false);
   const [bannerMessage, setBannerMessage] = useState("");
+  const [loadingDemo, setLoadingDemo] = useState(false);
   
   const hasAnimatedRef = useRef(false);
 
@@ -169,6 +173,38 @@ export default function PantryScreen({ navigation }: Props) {
     { key: "recent", label: "Recent" },
   ];
 
+  const loadDemoData = async () => {
+    if (loadingDemo) return;
+    setLoadingDemo(true);
+    try {
+      const demoItems = getDemoGroceryItems();
+      await addGroceries(demoItems);
+
+      const baseUrl = getApiUrl();
+      for (const { recipe, enhancedSteps } of DEMO_RECIPES) {
+        try {
+          await fetch(new URL("/api/saved-recipes", baseUrl).toString(), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ recipe, enhancedSteps }),
+          });
+        } catch (e) {
+          console.log("Demo recipe save skipped:", e);
+        }
+      }
+
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      setBannerMessage("Demo data loaded successfully");
+      setShowBanner(true);
+    } catch (error) {
+      console.error("Error loading demo data:", error);
+    } finally {
+      setLoadingDemo(false);
+    }
+  };
+
   const renderEmptyState = () => (
     <Animated.View
       entering={FadeInDown.delay(200)}
@@ -181,6 +217,25 @@ export default function PantryScreen({ navigation }: Props) {
       <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center" }}>
         Scan a receipt or add items manually
       </ThemedText>
+      {groceries.length === 0 ? (
+        <Pressable
+          onPress={loadDemoData}
+          disabled={loadingDemo}
+          style={[styles.demoButton, { borderColor: theme.textSecondary }]}
+          testID="button-load-demo"
+        >
+          {loadingDemo ? (
+            <ActivityIndicator size="small" color={theme.textSecondary} />
+          ) : (
+            <>
+              <Feather name="download" size={16} color={theme.textSecondary} />
+              <ThemedText type="bodyMedium" style={{ color: theme.textSecondary }}>
+                Load Demo Data
+              </ThemedText>
+            </>
+          )}
+        </Pressable>
+      ) : null}
     </Animated.View>
   );
 
@@ -434,5 +489,15 @@ const styles = StyleSheet.create({
   emptyTitle: {
     marginTop: Spacing.lg,
     marginBottom: Spacing.sm,
+  },
+  demoButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    marginTop: Spacing.xl,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
   },
 });
