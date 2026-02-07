@@ -98,8 +98,8 @@ export default function ScanReceiptScreen({ navigation }: Props) {
             <Feather name="arrow-left" size={24} color={theme.text} />
           </Pressable>
           <View style={styles.webUploadArea}>
-            <View style={[styles.uploadIconCircle, { backgroundColor: theme.backgroundCard }]}>
-              <Feather name="upload" size={40} color={theme.primary} />
+            <View style={[styles.uploadIconCircle, { backgroundColor: theme.backgroundSecondary }]}>
+              <Feather name="upload" size={40} color={theme.text} />
             </View>
             <ThemedText type="h3" style={styles.webTitle}>
               Upload Receipt Photo
