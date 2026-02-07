@@ -57,48 +57,60 @@ export default function ScanReceiptScreen({ navigation }: Props) {
     }
   };
 
-  if (!permission) {
-    return <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]} />;
-  }
+  if (Platform.OS !== "web") {
+    if (!permission) {
+      return <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]} />;
+    }
 
-  if (!permission.granted) {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.backgroundRoot, paddingTop: insets.top }]}>
-        <Animated.View entering={FadeIn} style={styles.permissionContent}>
-          <Feather name="camera" size={64} color={theme.textSecondary} />
-          <ThemedText type="h3" style={styles.permissionTitle}>
-            Camera Access Required
-          </ThemedText>
-          <ThemedText type="body" style={[styles.permissionText, { color: theme.textSecondary }]}>
-            NomUp needs camera access to scan your grocery receipts
-          </ThemedText>
-          <Button onPress={requestPermission} style={styles.permissionButton}>
-            Enable Camera
-          </Button>
-          {Platform.OS !== "web" && permission.canAskAgain === false ? (
-            <ThemedText type="small" style={[styles.settingsHint, { color: theme.textSecondary }]}>
-              Camera permission was denied. Please enable it in Settings.
+    if (!permission.granted) {
+      return (
+        <View style={[styles.container, { backgroundColor: theme.backgroundRoot, paddingTop: insets.top }]}>
+          <Animated.View entering={FadeIn} style={styles.permissionContent}>
+            <Feather name="camera" size={64} color={theme.textSecondary} />
+            <ThemedText type="h3" style={styles.permissionTitle}>
+              Camera Access Required
             </ThemedText>
-          ) : null}
-        </Animated.View>
-      </View>
-    );
+            <ThemedText type="body" style={[styles.permissionText, { color: theme.textSecondary }]}>
+              NomUp needs camera access to scan your grocery receipts
+            </ThemedText>
+            <Button onPress={requestPermission} style={styles.permissionButton}>
+              Enable Camera
+            </Button>
+            {permission.canAskAgain === false ? (
+              <ThemedText type="small" style={[styles.settingsHint, { color: theme.textSecondary }]}>
+                Camera permission was denied. Please enable it in Settings.
+              </ThemedText>
+            ) : null}
+          </Animated.View>
+        </View>
+      );
+    }
   }
 
   return (
     <View style={[styles.container, { backgroundColor: "#000" }]}>
       {Platform.OS === "web" ? (
-        <View style={[styles.webFallback, { paddingTop: insets.top }]}>
-          <Feather name="camera-off" size={64} color="#FFF" />
-          <ThemedText type="h4" style={styles.webText}>
-            Camera not available on web
-          </ThemedText>
-          <ThemedText type="body" style={styles.webSubtext}>
-            Run in Expo Go to use the camera feature
-          </ThemedText>
-          <Button onPress={handlePickImage} style={styles.galleryButton}>
-            Choose from Gallery
-          </Button>
+        <View style={[styles.webFallback, { paddingTop: insets.top, backgroundColor: theme.backgroundRoot }]}>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            style={styles.webBackButton}
+          >
+            <Feather name="arrow-left" size={24} color={theme.text} />
+          </Pressable>
+          <View style={styles.webUploadArea}>
+            <View style={[styles.uploadIconCircle, { backgroundColor: theme.backgroundCard }]}>
+              <Feather name="upload" size={40} color={theme.primary} />
+            </View>
+            <ThemedText type="h3" style={styles.webTitle}>
+              Upload Receipt Photo
+            </ThemedText>
+            <ThemedText type="body" style={[styles.webDescription, { color: theme.textSecondary }]}>
+              Select a photo of your grocery receipt and we'll automatically add the items to your pantry
+            </ThemedText>
+            <Button onPress={handlePickImage} style={styles.uploadButton} testID="button-upload-receipt">
+              Choose Photo
+            </Button>
+          </View>
         </View>
       ) : (
         <CameraView
@@ -279,20 +291,41 @@ const styles = StyleSheet.create({
   },
   webFallback: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
     paddingHorizontal: Spacing.xl,
   },
-  webText: {
-    color: "#FFF",
-    marginTop: Spacing.xl,
-    marginBottom: Spacing.sm,
+  webBackButton: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: Spacing.md,
   },
-  webSubtext: {
-    color: "rgba(255,255,255,0.7)",
+  webUploadArea: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingBottom: 80,
+  },
+  uploadIconCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: Spacing.xl,
   },
-  galleryButton: {
+  webTitle: {
+    marginBottom: Spacing.md,
+    textAlign: "center",
+  },
+  webDescription: {
+    textAlign: "center",
+    marginBottom: Spacing.xl,
+    maxWidth: 320,
+    lineHeight: 22,
+  },
+  uploadButton: {
     width: "80%",
+    maxWidth: 300,
   },
 });
