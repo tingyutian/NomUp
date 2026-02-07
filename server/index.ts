@@ -178,44 +178,37 @@ function configureExpoAndLanding(app: express.Application) {
 
   if (hasWebBuild) {
     log("Web build found in dist/ — serving for desktop browsers");
+    app.use("/_expo", express.static(path.join(webDistPath, "_expo")));
+    app.use("/assets", express.static(path.join(webDistPath, "assets")));
+    app.use("/favicon.ico", express.static(path.join(webDistPath, "favicon.ico")));
   }
+
+  app.get("/mobile", (req: Request, res: Response) => {
+    return serveLandingPage({ req, res, landingPageTemplate, appName });
+  });
 
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (req.path.startsWith("/api")) {
       return next();
     }
 
-    if (req.path !== "/" && req.path !== "/manifest") {
-      return next();
-    }
-
     const platform = req.header("expo-platform");
     if (platform && (platform === "ios" || platform === "android")) {
-      return serveExpoManifest(platform, res);
+      if (req.path === "/" || req.path === "/manifest") {
+        return serveExpoManifest(platform, res);
+      }
     }
 
     if (req.path === "/") {
-      const ua = req.header("user-agent") || "";
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(ua);
-
-      if (!isMobile && hasWebBuild) {
+      if (hasWebBuild) {
         return res.sendFile(path.join(webDistPath, "index.html"));
       }
-
-      return serveLandingPage({
-        req,
-        res,
-        landingPageTemplate,
-        appName,
-      });
+      return serveLandingPage({ req, res, landingPageTemplate, appName });
     }
 
     next();
   });
 
-  if (hasWebBuild) {
-    app.use(express.static(webDistPath));
-  }
   app.use("/assets", express.static(path.resolve(process.cwd(), "assets")));
   app.use(express.static(path.resolve(process.cwd(), "static-build")));
 
