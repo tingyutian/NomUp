@@ -50,17 +50,14 @@ export function Slider({
         </View>
       ) : null}
       <View style={styles.track}>
-        {steps.map((stepValue, index) => {
+        {steps.map((stepValue) => {
           const isActive = stepValue <= value;
-          const isLast = index === steps.length - 1;
           return (
             <Pressable
               key={stepValue}
               onPress={() => handleStepPress(stepValue)}
-              style={[
-                styles.step,
-                isLast ? styles.lastStep : undefined,
-              ]}
+              hitSlop={4}
+              style={styles.step}
             >
               <View
                 style={[
@@ -92,16 +89,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    height: 24,
+    height: 32,
   },
   step: {
-    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: Spacing.sm,
-  },
-  lastStep: {
-    flex: 0,
+    padding: Spacing.xs,
   },
   dot: {
     width: 16,
