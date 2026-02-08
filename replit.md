@@ -85,6 +85,21 @@ Preferred communication style: Simple, everyday language.
 - Database migrations: `npm run db:push` via Drizzle Kit
 - Path aliases: `@/` maps to `client/`, `@shared/` maps to `shared/`
 
+### Static Deployment
+- Published app uses pre-built static JS bundles (not a running Metro server)
+- Build script: `node scripts/build.js` (runs as `npm run expo:static:build`)
+- Build process: starts temporary Metro bundler → downloads iOS/Android bundles + manifests + assets → rewrites asset URLs → saves to `static-build/`
+- Deployment config in `.replit`: build step runs `npm run expo:static:build && npm run server:build`, then `npm run server:prod` serves the app
+- `REPLIT_INTERNAL_APP_DOMAIN` is set automatically during deployment and used by the build script for correct production URLs
+- Manifest endpoint includes `cache-control: no-cache` headers to ensure Expo Go always fetches fresh manifests
+- After code changes, publishing automatically triggers a full rebuild with the correct production domain
+
+### Demo Data
+- Demo data loaded via "Load Demo Data" button on empty Pantry screen
+- Includes 15 grocery items (ingredients for Beef and Mustard Pie) and 2 saved recipes
+- Demo recipes: "Beef and Mustard Pie" (id: 52874, 100% match) and "Avocado dip with new potatoes" (id: 53107, 47% match)
+- Demo recipe data defined in `client/data/demoData.ts` with pre-computed enhanced cooking steps
+
 ## External Dependencies
 
 ### AI Services
