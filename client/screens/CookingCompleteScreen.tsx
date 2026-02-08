@@ -152,9 +152,9 @@ export default function CookingCompleteScreen() {
                   </View>
                   {item.grocery ? (
                     <Slider
-                      value={usageAmounts[item.id] || 0}
+                      value={usageAmounts[item.id] || 1}
                       onValueChange={(val) => handleUsageChange(item.id, val)}
-                      min={0}
+                      min={1}
                       max={10}
                       step={1}
                       showLabel={true}
