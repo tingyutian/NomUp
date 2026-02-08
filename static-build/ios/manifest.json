@@ -1,0 +1,132 @@
+{
+  "id": "0f4fd0ba-25e5-43c9-886a-6c5574512add",
+  "createdAt": "2026-02-08T22:32:00.650Z",
+  "runtimeVersion": "exposdk:54.0.0",
+  "launchAsset": {
+    "key": "bundle-1770589920650-7255",
+    "contentType": "application/javascript",
+    "url": "https://586e36a7-4dfd-47a9-8296-b36f7711553b-00-1o6t4qf3kengh.kirk.replit.dev/1770589920650-7255/_expo/static/js/ios/bundle.js"
+  },
+  "assets": [],
+  "metadata": {},
+  "extra": {
+    "eas": {},
+    "expoClient": {
+      "name": "NomUp",
+      "slug": "nomup",
+      "version": "1.0.0",
+      "orientation": "portrait",
+      "icon": "./assets/images/icon.png",
+      "scheme": "nomup",
+      "userInterfaceStyle": "automatic",
+      "newArchEnabled": true,
+      "ios": {
+        "supportsTablet": true,
+        "bundleIdentifier": "com.nomup.app",
+        "infoPlist": {
+          "NSCameraUsageDescription": "NomUp needs camera access to scan receipts and food photos"
+        }
+      },
+      "android": {
+        "adaptiveIcon": {
+          "backgroundColor": "#F5F1E8",
+          "foregroundImage": "./assets/images/android-icon-foreground.png",
+          "backgroundImage": "./assets/images/android-icon-background.png",
+          "monochromeImage": "./assets/images/android-icon-monochrome.png",
+          "foregroundImageUrl": "https://586e36a7-4dfd-47a9-8296-b36f7711553b-00-1o6t4qf3kengh.kirk.replit.dev/assets/./assets/images/android-icon-foreground.png",
+          "monochromeImageUrl": "https://586e36a7-4dfd-47a9-8296-b36f7711553b-00-1o6t4qf3kengh.kirk.replit.dev/assets/./assets/images/android-icon-monochrome.png",
+          "backgroundImageUrl": "https://586e36a7-4dfd-47a9-8296-b36f7711553b-00-1o6t4qf3kengh.kirk.replit.dev/assets/./assets/images/android-icon-background.png"
+        },
+        "package": "com.nomup.app",
+        "edgeToEdgeEnabled": true,
+        "predictiveBackGestureEnabled": false,
+        "permissions": [
+          "android.permission.CAMERA",
+          "android.permission.RECORD_AUDIO"
+        ]
+      },
+      "web": {
+        "output": "single",
+        "favicon": "./assets/images/favicon.png"
+      },
+      "plugins": [
+        [
+          "expo-splash-screen",
+          {
+            "image": "./assets/images/splash-icon.png",
+            "imageWidth": 200,
+            "resizeMode": "contain",
+            "backgroundColor": "#F5F1E8",
+            "dark": {
+              "backgroundColor": "#1A1A1A"
+            }
+          }
+        ],
+        "expo-web-browser",
+        [
+          "expo-camera",
+          {
+            "cameraPermission": "Allow NomUp to access your camera to scan receipts and food photos"
+          }
+        ],
+        [
+          "expo-image-picker",
+          {
+            "photosPermission": "Allow NomUp to access your photos to add grocery receipts"
+          }
+        ]
+      ],
+      "experiments": {
+        "reactCompiler": true
+      },
+      "_internal": {
+        "isDebug": false,
+        "projectRoot": "/home/runner/workspace",
+        "dynamicConfigPath": {},
+        "staticConfigPath": "/home/runner/workspace/app.json",
+        "packageJsonPath": "/home/runner/workspace/package.json",
+        "pluginHistory": {
+          "expo-splash-screen": {
+            "name": "expo-splash-screen",
+            "version": "31.0.11"
+          },
+          "expo-web-browser": {
+            "name": "expo-web-browser",
+            "version": "15.0.9"
+          },
+          "expo-camera": {
+            "name": "expo-camera",
+            "version": "17.0.10"
+          },
+          "expo-image-picker": {
+            "name": "expo-image-picker",
+            "version": "17.0.10"
+          }
+        }
+      },
+      "sdkVersion": "54.0.0",
+      "platforms": [
+        "ios",
+        "android",
+        "web"
+      ],
+      "androidStatusBar": {
+        "backgroundColor": "#F5F1E8"
+      },
+      "iconUrl": "https://586e36a7-4dfd-47a9-8296-b36f7711553b-00-1o6t4qf3kengh.kirk.replit.dev/assets/./assets/images/icon.png",
+      "hostUri": "586e36a7-4dfd-47a9-8296-b36f7711553b-00-1o6t4qf3kengh.kirk.replit.dev/ios"
+    },
+    "expoGo": {
+      "debuggerHost": "586e36a7-4dfd-47a9-8296-b36f7711553b-00-1o6t4qf3kengh.kirk.replit.dev/ios",
+      "developer": {
+        "tool": "expo-cli",
+        "projectRoot": "/home/runner/workspace"
+      },
+      "packagerOpts": {
+        "dev": false
+      },
+      "mainModuleName": "client/index"
+    },
+    "scopeKey": "@anonymous/nomup-a10c569f-adf3-4a08-9bf4-fe30d2d9cfb2"
+  }
+}
