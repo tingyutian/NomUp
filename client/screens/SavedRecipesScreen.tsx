@@ -344,6 +344,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: "100%",
+    maxWidth: 768,
     borderRadius: BorderRadius.xl,
     padding: Spacing.xl,
     alignItems: "center",

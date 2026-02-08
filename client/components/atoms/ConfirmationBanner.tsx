@@ -8,6 +8,7 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useHeaderHeight } from "@react-navigation/elements";
 import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { BorderRadius, Spacing, Colors } from "@/constants/theme";
@@ -27,8 +28,8 @@ export function ConfirmationBanner({
   duration = 2500,
   iconName = "check-circle",
 }: ConfirmationBannerProps) {
-  const insets = useSafeAreaInsets();
-  const translateY = useSharedValue(-100);
+  const headerHeight = useHeaderHeight();
+  const translateY = useSharedValue(-60);
   const opacity = useSharedValue(0);
 
   useEffect(() => {
@@ -37,7 +38,7 @@ export function ConfirmationBanner({
       opacity.value = withSpring(1);
       
       const hideTimeout = setTimeout(() => {
-        translateY.value = withSpring(-100, { damping: 15, stiffness: 150 });
+        translateY.value = withSpring(-60, { damping: 15, stiffness: 150 });
         opacity.value = withDelay(200, withSpring(0, {}, () => {
           runOnJS(onHide)();
         }));
@@ -58,7 +59,7 @@ export function ConfirmationBanner({
     <Animated.View
       style={[
         styles.container,
-        { paddingTop: insets.top + Spacing.md },
+        { top: headerHeight },
         animatedStyle,
       ]}
     >
@@ -73,14 +74,13 @@ export function ConfirmationBanner({
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    top: 0,
     left: 0,
     right: 0,
     backgroundColor: Colors.light.text,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingBottom: Spacing.lg,
+    paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.xl,
     zIndex: 1000,
   },

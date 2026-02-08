@@ -281,6 +281,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 10,
+    maxWidth: 768,
+    alignSelf: "center",
+    width: "100%",
   },
   choiceModalTitle: {
     textAlign: "center",

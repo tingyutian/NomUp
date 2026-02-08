@@ -357,6 +357,9 @@ const styles = StyleSheet.create({
     borderTopRightRadius: BorderRadius["2xl"],
     padding: Spacing.xl,
     maxHeight: "85%",
+    maxWidth: 768,
+    alignSelf: "center",
+    width: "100%",
   },
   handle: {
     width: 40,

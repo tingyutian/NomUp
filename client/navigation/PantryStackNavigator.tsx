@@ -84,6 +84,7 @@ const resetStyles = StyleSheet.create({
   },
   content: {
     width: "100%",
+    maxWidth: 768,
     borderRadius: BorderRadius.xl,
     padding: Spacing.xl,
     alignItems: "center",

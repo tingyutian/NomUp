@@ -78,6 +78,7 @@ const styles = StyleSheet.create({
   },
   content: {
     width: "100%",
+    maxWidth: 768,
     borderRadius: BorderRadius["2xl"],
     padding: Spacing.xl,
     alignItems: "center",

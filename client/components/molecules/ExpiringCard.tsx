@@ -18,7 +18,9 @@ interface ExpiringCardProps {
 }
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-const CARD_WIDTH = (Dimensions.get("window").width - Spacing.lg * 2 - Spacing.md) / 2;
+const MAX_CARD_WIDTH = 170;
+const CALCULATED_WIDTH = (Dimensions.get("window").width - Spacing.lg * 2 - Spacing.md) / 2;
+const CARD_WIDTH = Math.min(CALCULATED_WIDTH, MAX_CARD_WIDTH);
 
 const categoryColors: Record<string, string> = {
   produce: Colors.light.produce,
