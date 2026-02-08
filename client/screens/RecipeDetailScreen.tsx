@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useLayoutEffect } from "react";
+import React, { useState, useMemo, useLayoutEffect } from "react";
 import {
   View,
   ScrollView,
@@ -17,7 +17,6 @@ import { HeaderButton } from "@react-navigation/elements";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
-import { useQueryClient } from "@tanstack/react-query";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useApp } from "@/context/AppContext";
@@ -101,37 +100,15 @@ export default function RecipeDetailScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
-  const { addToShoppingList, addMultipleToShoppingList, shoppingList } = useApp();
-  const queryClient = useQueryClient();
+  const { addToShoppingList, addMultipleToShoppingList, shoppingList, saveRecipe, unsaveRecipe, isRecipeSaved, savedRecipes, updateRecipeSteps } = useApp();
   const { recipe } = route.params;
   
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
   const [showBanner, setShowBanner] = useState(false);
   const [isEnhancing, setIsEnhancing] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
+  const [isSaved, setIsSaved] = useState(isRecipeSaved(recipe.id));
   const [isSaving, setIsSaving] = useState(false);
-  const [isCheckingSaved, setIsCheckingSaved] = useState(true);
   const [showUnsaveModal, setShowUnsaveModal] = useState(false);
-
-  useEffect(() => {
-    const checkIfSaved = async () => {
-      try {
-        const baseUrl = getApiUrl();
-        const response = await fetch(
-          new URL(`/api/saved-recipes/check/${recipe.id}`, baseUrl).toString()
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setIsSaved(data.isSaved);
-        }
-      } catch (error) {
-        console.error("Error checking saved status:", error);
-      } finally {
-        setIsCheckingSaved(false);
-      }
-    };
-    checkIfSaved();
-  }, [recipe.id]);
 
   const handleHeartPress = () => {
     if (isSaving) return;
@@ -146,23 +123,10 @@ export default function RecipeDetailScreen() {
   const handleSaveRecipe = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsSaving(true);
-    
     try {
-      const baseUrl = getApiUrl();
-      const response = await fetch(
-        new URL("/api/saved-recipes", baseUrl).toString(),
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ recipe }),
-        }
-      );
-      
-      if (response.ok) {
-        setIsSaved(true);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        queryClient.invalidateQueries({ queryKey: ["/api/saved-recipes"] });
-      }
+      await saveRecipe(recipe);
+      setIsSaved(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       console.error("Error saving recipe:", error);
     } finally {
@@ -174,19 +138,10 @@ export default function RecipeDetailScreen() {
     setShowUnsaveModal(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsSaving(true);
-    
     try {
-      const baseUrl = getApiUrl();
-      const response = await fetch(
-        new URL(`/api/saved-recipes/${recipe.id}`, baseUrl).toString(),
-        { method: "DELETE" }
-      );
-      
-      if (response.ok) {
-        setIsSaved(false);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        queryClient.invalidateQueries({ queryKey: ["/api/saved-recipes"] });
-      }
+      await unsaveRecipe(recipe.id);
+      setIsSaved(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       console.error("Error unsaving recipe:", error);
     } finally {
@@ -199,7 +154,7 @@ export default function RecipeDetailScreen() {
       headerRight: () => (
         <HeaderButton
           onPress={handleHeartPress}
-          disabled={isSaving || isCheckingSaved}
+          disabled={isSaving}
         >
           {isSaving ? (
             <ActivityIndicator size="small" color={Colors.light.expiredRed} />
@@ -213,7 +168,7 @@ export default function RecipeDetailScreen() {
         </HeaderButton>
       ),
     });
-  }, [navigation, isSaved, isSaving, isCheckingSaved, theme.text]);
+  }, [navigation, isSaved, isSaving, theme.text]);
 
   const handleStartCooking = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -223,35 +178,23 @@ export default function RecipeDetailScreen() {
       const baseUrl = getApiUrl();
       let steps: CookingStep[];
       
-      // If recipe is saved, check for existing enhanced steps first
       if (isSaved) {
-        try {
-          const savedResponse = await fetch(
-            new URL(`/api/saved-recipes/${recipe.id}`, baseUrl).toString()
-          );
-          if (savedResponse.ok) {
-            const savedData = await savedResponse.json();
-            if (savedData.recipe?.enhancedSteps && savedData.recipe.enhancedSteps.length > 0) {
-              // Use saved enhanced steps - instant!
-              steps = savedData.recipe.enhancedSteps;
-              const cookingRecipe: CookingRecipe = {
-                id: recipe.id,
-                title: recipe.name,
-                thumbnail: recipe.thumbnail,
-                steps,
-                usedIngredients: recipe.matchedIngredients,
-              };
-              navigation.navigate("CookingMode", { recipe: cookingRecipe });
-              setIsEnhancing(false);
-              return;
-            }
-          }
-        } catch (checkError) {
-          console.error("Error checking saved steps:", checkError);
+        const savedData = savedRecipes.find(r => r.recipeId === recipe.id);
+        if (savedData?.enhancedSteps && savedData.enhancedSteps.length > 0) {
+          steps = savedData.enhancedSteps;
+          const cookingRecipe: CookingRecipe = {
+            id: recipe.id,
+            title: recipe.name,
+            thumbnail: recipe.thumbnail,
+            steps,
+            usedIngredients: recipe.matchedIngredients,
+          };
+          navigation.navigate("CookingMode", { recipe: cookingRecipe });
+          setIsEnhancing(false);
+          return;
         }
       }
       
-      // Generate enhanced steps via AI
       const response = await fetch(new URL("/api/enhance-instructions", baseUrl).toString(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -265,17 +208,9 @@ export default function RecipeDetailScreen() {
         const data = await response.json();
         steps = data.steps;
         
-        // Save enhanced steps for saved recipes
         if (isSaved && steps.length > 0) {
           try {
-            await fetch(
-              new URL(`/api/saved-recipes/${recipe.id}/steps`, baseUrl).toString(),
-              {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ enhancedSteps: steps }),
-              }
-            );
+            await updateRecipeSteps(recipe.id, steps);
           } catch (saveError) {
             console.error("Error saving enhanced steps:", saveError);
           }

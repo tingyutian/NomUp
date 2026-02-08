@@ -3,24 +3,21 @@ import {
   View,
   FlatList,
   StyleSheet,
-  ActivityIndicator,
   Pressable,
   Image,
   Dimensions,
   Modal,
 } from "react-native";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { useApp } from "@/context/AppContext";
-import { getApiUrl } from "@/lib/query-client";
+import { useApp, SavedRecipeData } from "@/context/AppContext";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { recomputeIngredientMatch } from "@/utils/ingredientMatcher";
 import type { RootStackParamList, ScoredRecipe } from "@/navigation/RootStackNavigator";
@@ -31,27 +28,6 @@ const HORIZONTAL_PADDING = Spacing.md;
 const CARD_WIDTH = (SCREEN_WIDTH - HORIZONTAL_PADDING * 2 - CARD_GAP) / 2;
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
-interface SavedRecipeData {
-  id: string;
-  recipeId: string;
-  name: string;
-  thumbnail: string | null;
-  category: string | null;
-  instructions: string | null;
-  matchScore: number;
-  matchedIngredients: string[];
-  missingIngredients: string[];
-  ingredients: string[];
-  stats: { total: number; matched: number; missing: number } | null;
-  enhancedSteps: Array<{
-    stepNumber: number;
-    instruction: string;
-    duration?: number;
-    temperature?: string;
-  }> | null;
-  savedAt: string;
-}
 
 interface RecipeCardProps {
   recipe: SavedRecipeData;
@@ -92,23 +68,6 @@ function RecipeCard({ recipe, index, onPress, onLongPress }: RecipeCardProps) {
   );
 }
 
-function LoadingState() {
-  const { theme } = useTheme();
-  const headerHeight = useHeaderHeight();
-
-  return (
-    <Animated.View 
-      entering={FadeIn.duration(300)} 
-      style={[styles.loadingContainer, { paddingTop: headerHeight + Spacing.xl }]}
-    >
-      <ActivityIndicator size="large" color={theme.text} />
-      <ThemedText type="h4" style={styles.loadingTitle}>
-        Loading saved recipes...
-      </ThemedText>
-    </Animated.View>
-  );
-}
-
 function EmptyState() {
   const { theme } = useTheme();
   const headerHeight = useHeaderHeight();
@@ -131,18 +90,10 @@ export default function SavedRecipesScreen() {
   const { theme } = useTheme();
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
-  const queryClient = useQueryClient();
   
-  const { groceries } = useApp();
+  const { groceries, savedRecipes, unsaveRecipe } = useApp();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [recipeToDelete, setRecipeToDelete] = useState<SavedRecipeData | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const { data, isLoading, error, refetch } = useQuery<{ recipes: SavedRecipeData[] }>({
-    queryKey: ["/api/saved-recipes"],
-  });
-
-  const recipes = data?.recipes || [];
 
   const handleRecipePress = (savedRecipe: SavedRecipeData) => {
     const ingredients = savedRecipe.ingredients || [];
@@ -170,38 +121,14 @@ export default function SavedRecipesScreen() {
   };
 
   const handleDelete = async () => {
-    if (!recipeToDelete || isDeleting) return;
-    
-    setIsDeleting(true);
-    try {
-      const baseUrl = getApiUrl();
-      const response = await fetch(
-        new URL(`/api/saved-recipes/${recipeToDelete.recipeId}`, baseUrl).toString(),
-        { method: "DELETE" }
-      );
-      
-      if (response.ok) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        queryClient.invalidateQueries({ queryKey: ["/api/saved-recipes"] });
-        setShowDeleteModal(false);
-        setRecipeToDelete(null);
-      }
-    } catch (error) {
-      console.error("Error deleting recipe:", error);
-    } finally {
-      setIsDeleting(false);
-    }
+    if (!recipeToDelete) return;
+    await unsaveRecipe(recipeToDelete.recipeId);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setShowDeleteModal(false);
+    setRecipeToDelete(null);
   };
 
-  if (isLoading) {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
-        <LoadingState />
-      </View>
-    );
-  }
-
-  if (error || recipes.length === 0) {
+  if (savedRecipes.length === 0) {
     return (
       <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
         <EmptyState />
@@ -212,7 +139,7 @@ export default function SavedRecipesScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
       <FlatList
-        data={recipes}
+        data={savedRecipes}
         numColumns={2}
         keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => (
@@ -257,14 +184,9 @@ export default function SavedRecipesScreen() {
               </Pressable>
               <Pressable
                 onPress={handleDelete}
-                disabled={isDeleting}
                 style={[styles.modalButton, { backgroundColor: Colors.light.expiredRed }]}
               >
-                {isDeleting ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <ThemedText type="bodyMedium" style={{ color: "#FFF" }}>Remove</ThemedText>
-                )}
+                <ThemedText type="bodyMedium" style={{ color: "#FFF" }}>Remove</ThemedText>
               </Pressable>
             </View>
           </View>
@@ -314,16 +236,6 @@ const styles = StyleSheet.create({
   badgeText: {
     color: "#FFF",
     fontWeight: "600",
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: Spacing.xl,
-    gap: Spacing.lg,
-  },
-  loadingTitle: {
-    textAlign: "center",
   },
   emptyContainer: {
     flex: 1,

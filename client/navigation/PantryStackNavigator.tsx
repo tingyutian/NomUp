@@ -27,6 +27,7 @@ function ResetButton() {
       "@nomup_groceries",
       "@nomup_shopping_list",
       "@nomup_onboarding_complete",
+      "@nomup_saved_recipes",
     ]);
     await reloadAppAsync();
   };

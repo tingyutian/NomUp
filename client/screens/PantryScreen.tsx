@@ -18,7 +18,6 @@ import { IconButton } from "@/components/atoms/IconButton";
 import { useTheme } from "@/hooks/useTheme";
 import { useApp, GroceryItem } from "@/context/AppContext";
 import { Button } from "@/components/Button";
-import { getApiUrl } from "@/lib/query-client";
 import { getDemoGroceryItems, DEMO_RECIPES } from "@/data/demoData";
 import { BorderRadius, Spacing, Colors } from "@/constants/theme";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -46,6 +45,7 @@ export default function PantryScreen({ navigation }: Props) {
     useGrocery,
     throwAwayGrocery,
     addToShoppingList,
+    saveRecipe,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<StorageTab>("fridge");
@@ -180,14 +180,9 @@ export default function PantryScreen({ navigation }: Props) {
       const demoItems = getDemoGroceryItems();
       await addGroceries(demoItems);
 
-      const baseUrl = getApiUrl();
       for (const { recipe, enhancedSteps } of DEMO_RECIPES) {
         try {
-          await fetch(new URL("/api/saved-recipes", baseUrl).toString(), {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ recipe, enhancedSteps }),
-          });
+          await saveRecipe(recipe, enhancedSteps);
         } catch (e) {
           console.log("Demo recipe save skipped:", e);
         }

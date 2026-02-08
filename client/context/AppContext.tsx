@@ -33,9 +33,31 @@ export interface ShoppingListItem {
   addedAt: string;
 }
 
+export interface SavedRecipeData {
+  id: string;
+  recipeId: string;
+  name: string;
+  thumbnail: string | null;
+  category: string | null;
+  instructions: string | null;
+  matchScore: number;
+  matchedIngredients: string[];
+  missingIngredients: string[];
+  ingredients: string[];
+  stats: { total: number; matched: number; missing: number } | null;
+  enhancedSteps: Array<{
+    stepNumber: number;
+    instruction: string;
+    duration?: number;
+    temperature?: string;
+  }> | null;
+  savedAt: string;
+}
+
 interface AppContextType {
   groceries: GroceryItem[];
   shoppingList: ShoppingListItem[];
+  savedRecipes: SavedRecipeData[];
   hasCompletedOnboarding: boolean;
   isLoading: boolean;
   addGroceries: (items: GroceryItem[]) => Promise<void>;
@@ -49,6 +71,10 @@ interface AppContextType {
   updateShoppingListItem: (id: string, updates: Partial<ShoppingListItem>) => Promise<void>;
   toggleShoppingListItem: (id: string) => Promise<void>;
   clearShoppingList: () => Promise<void>;
+  saveRecipe: (recipe: any, enhancedSteps?: any[]) => Promise<void>;
+  unsaveRecipe: (recipeId: string) => Promise<void>;
+  isRecipeSaved: (recipeId: string) => boolean;
+  updateRecipeSteps: (recipeId: string, enhancedSteps: any[]) => Promise<void>;
   completeOnboarding: () => Promise<void>;
   refreshData: () => Promise<void>;
 }
@@ -59,11 +85,13 @@ const STORAGE_KEYS = {
   GROCERIES: "@nomup_groceries",
   SHOPPING_LIST: "@nomup_shopping_list",
   ONBOARDING: "@nomup_onboarding_complete",
+  SAVED_RECIPES: "@nomup_saved_recipes",
 };
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [groceries, setGroceries] = useState<GroceryItem[]>([]);
   const [shoppingList, setShoppingList] = useState<ShoppingListItem[]>([]);
+  const [savedRecipes, setSavedRecipes] = useState<SavedRecipeData[]>([]);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -73,10 +101,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const loadData = async () => {
     try {
-      const [groceriesData, shoppingListData, onboardingData] = await Promise.all([
+      const [groceriesData, shoppingListData, onboardingData, savedRecipesData] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.GROCERIES),
         AsyncStorage.getItem(STORAGE_KEYS.SHOPPING_LIST),
         AsyncStorage.getItem(STORAGE_KEYS.ONBOARDING),
+        AsyncStorage.getItem(STORAGE_KEYS.SAVED_RECIPES),
       ]);
 
       if (groceriesData) {
@@ -86,6 +115,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       if (shoppingListData) {
         setShoppingList(JSON.parse(shoppingListData));
+      }
+      if (savedRecipesData) {
+        setSavedRecipes(JSON.parse(savedRecipesData));
       }
       if (onboardingData === "true") {
         setHasCompletedOnboarding(true);
@@ -118,6 +150,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const saveShoppingList = async (items: ShoppingListItem[]) => {
     await AsyncStorage.setItem(STORAGE_KEYS.SHOPPING_LIST, JSON.stringify(items));
     setShoppingList(items);
+  };
+
+  const saveSavedRecipes = async (recipes: SavedRecipeData[]) => {
+    await AsyncStorage.setItem(STORAGE_KEYS.SAVED_RECIPES, JSON.stringify(recipes));
+    setSavedRecipes(recipes);
   };
 
   const addGroceries = async (items: GroceryItem[]) => {
@@ -215,6 +252,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await saveShoppingList([]);
   };
 
+  const saveRecipe = async (recipe: any, enhancedSteps?: any[]) => {
+    const existing = savedRecipes.find(r => r.recipeId === recipe.id);
+    if (existing) return;
+
+    const newSavedRecipe: SavedRecipeData = {
+      id: `saved-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      recipeId: recipe.id,
+      name: recipe.name,
+      thumbnail: recipe.thumbnail || null,
+      category: recipe.category || null,
+      instructions: recipe.instructions || null,
+      matchScore: recipe.matchScore || 0,
+      matchedIngredients: recipe.matchedIngredients || [],
+      missingIngredients: recipe.missingIngredients || [],
+      ingredients: recipe.ingredients || [],
+      stats: recipe.stats || null,
+      enhancedSteps: enhancedSteps || null,
+      savedAt: new Date().toISOString(),
+    };
+    await saveSavedRecipes([...savedRecipes, newSavedRecipe]);
+  };
+
+  const unsaveRecipe = async (recipeId: string) => {
+    const filtered = savedRecipes.filter(r => r.recipeId !== recipeId);
+    await saveSavedRecipes(filtered);
+  };
+
+  const isRecipeSaved = (recipeId: string) => {
+    return savedRecipes.some(r => r.recipeId === recipeId);
+  };
+
+  const updateRecipeSteps = async (recipeId: string, enhancedSteps: any[]) => {
+    const updated = savedRecipes.map(r =>
+      r.recipeId === recipeId ? { ...r, enhancedSteps } : r
+    );
+    await saveSavedRecipes(updated);
+  };
+
   const completeOnboarding = async () => {
     await AsyncStorage.setItem(STORAGE_KEYS.ONBOARDING, "true");
     setHasCompletedOnboarding(true);
@@ -229,6 +304,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       value={{
         groceries,
         shoppingList,
+        savedRecipes,
         hasCompletedOnboarding,
         isLoading,
         addGroceries,
@@ -242,6 +318,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updateShoppingListItem,
         toggleShoppingListItem,
         clearShoppingList,
+        saveRecipe,
+        unsaveRecipe,
+        isRecipeSaved,
+        updateRecipeSteps,
         completeOnboarding,
         refreshData,
       }}
