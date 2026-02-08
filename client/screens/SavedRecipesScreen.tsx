@@ -5,7 +5,7 @@ import {
   StyleSheet,
   Pressable,
   Image,
-  Dimensions,
+  useWindowDimensions,
   Modal,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
@@ -22,25 +22,25 @@ import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { recomputeIngredientMatch } from "@/utils/ingredientMatcher";
 import type { RootStackParamList, ScoredRecipe } from "@/navigation/RootStackNavigator";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_GAP = Spacing.md;
 const HORIZONTAL_PADDING = Spacing.md;
-const CARD_WIDTH = (SCREEN_WIDTH - HORIZONTAL_PADDING * 2 - CARD_GAP) / 2;
+const MAX_CONTENT_WIDTH = 768;
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface RecipeCardProps {
   recipe: SavedRecipeData;
   index: number;
+  cardWidth: number;
   onPress: () => void;
   onLongPress: () => void;
 }
 
-function RecipeCard({ recipe, index, onPress, onLongPress }: RecipeCardProps) {
+function RecipeCard({ recipe, index, cardWidth, onPress, onLongPress }: RecipeCardProps) {
   const { theme } = useTheme();
 
   return (
-    <Animated.View entering={FadeInDown.delay(index * 50).duration(300)}>
+    <Animated.View entering={FadeInDown.delay(index * 50).duration(300)} style={{ width: cardWidth }}>
       <Pressable
         style={[styles.card, { backgroundColor: theme.backgroundDefault }]}
         onPress={onPress}
@@ -90,7 +90,11 @@ export default function SavedRecipesScreen() {
   const { theme } = useTheme();
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
   
+  const contentWidth = Math.min(screenWidth, MAX_CONTENT_WIDTH);
+  const cardWidth = (contentWidth - HORIZONTAL_PADDING * 2 - CARD_GAP) / 2;
+
   const { groceries, savedRecipes, unsaveRecipe } = useApp();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [recipeToDelete, setRecipeToDelete] = useState<SavedRecipeData | null>(null);
@@ -146,6 +150,7 @@ export default function SavedRecipesScreen() {
           <RecipeCard
             recipe={item}
             index={index}
+            cardWidth={cardWidth}
             onPress={() => handleRecipePress(item)}
             onLongPress={() => handleLongPress(item)}
           />
@@ -153,7 +158,13 @@ export default function SavedRecipesScreen() {
         columnWrapperStyle={styles.row}
         contentContainerStyle={[
           styles.grid,
-          { paddingTop: headerHeight + Spacing.md, paddingBottom: insets.bottom + 100 },
+          {
+            paddingTop: headerHeight + Spacing.md,
+            paddingBottom: insets.bottom + 100,
+            maxWidth: MAX_CONTENT_WIDTH,
+            alignSelf: "center" as const,
+            width: "100%" as unknown as number,
+          },
         ]}
         showsVerticalScrollIndicator={false}
       />
@@ -208,7 +219,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   card: {
-    width: CARD_WIDTH,
     borderRadius: BorderRadius.lg,
     overflow: "hidden",
   },
