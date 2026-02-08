@@ -1,5 +1,5 @@
-import React, { useState, useRef } from "react";
-import { View, StyleSheet, Pressable, Dimensions, FlatList, ViewToken, ScrollView } from "react-native";
+import React, { useState } from "react";
+import { View, StyleSheet, Pressable, ScrollView, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import type { RouteProp } from "@react-navigation/native";
@@ -16,76 +16,55 @@ import type { RootStackParamList, CookingStep } from "@/navigation/RootStackNavi
 type RouteProps = RouteProp<RootStackParamList, "CookingMode">;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const MAX_CONTENT_WIDTH = 480;
 
 interface StepCardProps {
   step: CookingStep;
   totalSteps: number;
-  isActive: boolean;
 }
 
-function StepCard({ step, totalSteps, isActive }: StepCardProps) {
+function StepCard({ step, totalSteps }: StepCardProps) {
   const { theme } = useTheme();
-  const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.stepCard, { width: SCREEN_WIDTH }]}>
-      <ScrollView 
-        contentContainerStyle={[styles.stepContent, { paddingTop: insets.top + Spacing["2xl"] }]}
-        showsVerticalScrollIndicator={false}
-      >
-        <Animated.View entering={isActive ? FadeIn.delay(100).duration(300) : undefined}>
-          <View style={styles.stepIndicator}>
-            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              STEP {step.stepNumber} OF {totalSteps}
-            </ThemedText>
-          </View>
-        </Animated.View>
+    <Animated.View entering={FadeIn.duration(300)} style={styles.stepContentInner}>
+      <View style={styles.stepIndicator}>
+        <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+          STEP {step.stepNumber} OF {totalSteps}
+        </ThemedText>
+      </View>
 
-        <Animated.View 
-          entering={isActive ? FadeIn.delay(200).duration(400) : undefined}
-          style={styles.stepNumberContainer}
-        >
-          <View style={[styles.stepNumberCircle, { backgroundColor: theme.text }]}>
-            <ThemedText type="h1" style={{ color: theme.buttonText }}>
-              {step.stepNumber}
-            </ThemedText>
-          </View>
-        </Animated.View>
-
-        <Animated.View 
-          entering={isActive ? FadeIn.delay(300).duration(400) : undefined}
-          style={styles.instructionContainer}
-        >
-          <ThemedText type="h3" style={[styles.instruction, { color: theme.text }]}>
-            {step.instruction}
+      <View style={styles.stepNumberContainer}>
+        <View style={[styles.stepNumberCircle, { backgroundColor: theme.text }]}>
+          <ThemedText type="h1" style={{ color: theme.buttonText }}>
+            {step.stepNumber}
           </ThemedText>
-        </Animated.View>
+        </View>
+      </View>
 
-        {step.temperature ? (
-          <Animated.View 
-            entering={isActive ? FadeIn.delay(400).duration(300) : undefined}
-            style={styles.metaContainer}
-          >
-            <View style={[styles.metaBadge, { backgroundColor: theme.backgroundSecondary }]}>
-              <Feather name="thermometer" size={16} color={theme.textSecondary} />
-              <ThemedText type="bodyMedium" style={{ color: theme.text }}>
-                {step.temperature}
-              </ThemedText>
-            </View>
-          </Animated.View>
-        ) : null}
+      <View style={styles.instructionContainer}>
+        <ThemedText type="h3" style={[styles.instruction, { color: theme.text }]}>
+          {step.instruction}
+        </ThemedText>
+      </View>
 
-        {step.duration ? (
-          <Animated.View 
-            entering={isActive ? FadeIn.delay(500).duration(400) : undefined}
-            style={styles.timerContainer}
-          >
-            <CookingTimer durationMinutes={step.duration} />
-          </Animated.View>
-        ) : null}
-      </ScrollView>
-    </View>
+      {step.temperature ? (
+        <View style={styles.metaContainer}>
+          <View style={[styles.metaBadge, { backgroundColor: theme.backgroundSecondary }]}>
+            <Feather name="thermometer" size={16} color={theme.textSecondary} />
+            <ThemedText type="bodyMedium" style={{ color: theme.text }}>
+              {step.temperature}
+            </ThemedText>
+          </View>
+        </View>
+      ) : null}
+
+      {step.duration ? (
+        <View style={styles.timerContainer}>
+          <CookingTimer durationMinutes={step.duration} />
+        </View>
+      ) : null}
+    </Animated.View>
   );
 }
 
@@ -94,25 +73,15 @@ export default function CookingModeScreen() {
   const route = useRoute<RouteProps>();
   const navigation = useNavigation<NavigationProp>();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
 
   const { recipe } = route.params;
   const [currentIndex, setCurrentIndex] = useState(0);
-  const flatListRef = useRef<FlatList>(null);
-
-  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
-    if (viewableItems.length > 0 && viewableItems[0].index !== null) {
-      setCurrentIndex(viewableItems[0].index);
-    }
-  }).current;
-
-  const viewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 50,
-  }).current;
 
   const goToNext = () => {
     if (currentIndex < recipe.steps.length - 1) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
+      setCurrentIndex(currentIndex + 1);
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.navigate("CookingComplete", { recipe });
@@ -122,7 +91,7 @@ export default function CookingModeScreen() {
   const goToPrevious = () => {
     if (currentIndex > 0) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      flatListRef.current?.scrollToIndex({ index: currentIndex - 1, animated: true });
+      setCurrentIndex(currentIndex - 1);
     }
   };
 
@@ -132,6 +101,7 @@ export default function CookingModeScreen() {
   };
 
   const isLastStep = currentIndex === recipe.steps.length - 1;
+  const currentStep = recipe.steps[currentIndex];
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
@@ -159,28 +129,19 @@ export default function CookingModeScreen() {
         ))}
       </View>
 
-      <FlatList
-        ref={flatListRef}
-        data={recipe.steps}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(item) => item.stepNumber.toString()}
-        renderItem={({ item, index }) => (
+      <ScrollView
+        style={styles.scrollArea}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[styles.stepContent, { maxWidth: Math.min(screenWidth, MAX_CONTENT_WIDTH) }]}>
           <StepCard
-            step={item}
+            key={currentIndex}
+            step={currentStep}
             totalSteps={recipe.steps.length}
-            isActive={index === currentIndex}
           />
-        )}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
-        getItemLayout={(_, index) => ({
-          length: SCREEN_WIDTH,
-          offset: SCREEN_WIDTH * index,
-          index,
-        })}
-      />
+        </View>
+      </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + Spacing.lg }]}>
         <Pressable
@@ -251,16 +212,23 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
   },
-  stepCard: {
+  scrollArea: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    alignItems: "center",
     justifyContent: "center",
   },
   stepContent: {
-    flexGrow: 1,
+    width: "100%",
     paddingHorizontal: Spacing["2xl"],
     alignItems: "center",
-    justifyContent: "center",
     paddingBottom: Spacing["3xl"],
+  },
+  stepContentInner: {
+    width: "100%",
+    alignItems: "center",
   },
   stepIndicator: {
     marginBottom: Spacing.xl,
@@ -276,7 +244,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   instructionContainer: {
-    maxWidth: "100%",
+    width: "100%",
   },
   instruction: {
     textAlign: "center",
