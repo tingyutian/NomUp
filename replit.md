@@ -14,7 +14,7 @@ Core features:
 - **Unified Add/Edit Modal**: Single AddItemModal component handles both adding and editing items with consistent layout. Fields: Name → Category (dropdown selector) → Storage Location (chips) → Quantity/Unit → Expires In
 - **Item Detail Modal**: Tap items to view details, log consumption, edit (with category dropdown selector), find recipes, or add to shopping list
 - **Recipe Discovery**: Recipe suggestions based on pantry items, accessible via book icon in ItemDetailModal. Uses TheMealDB API for recipes with optimized local fuzzy matching for ingredient scoring (no AI call for matching). Shows match percentage, "You Have" and "Need to Buy" sections, with ability to add missing ingredients to shopping list. Performance optimized: ingredient lookup table for 70+ common items, 5 recipe limit, under 1 second load times. Flow: ItemDetailModal (book icon) → RecipeFeedScreen → RecipeDetailScreen → CookingModeScreen → CookingCompleteScreen
-- **Saved Recipes**: Users can save favorite recipes via heart button in RecipeDetailScreen header. Saving generates and stores enhanced step-by-step instructions using AI. Saved recipes accessible via SAVED tab in bottom navigation. Displays recipes in grid layout matching RecipeFeed. Long-press on saved recipe opens confirmation modal for removal. Database table: `saved_recipes`
+- **Saved Recipes**: Users can save favorite recipes via heart button in RecipeDetailScreen header. Saving generates and stores enhanced step-by-step instructions using AI. Saved recipes accessible via SAVED tab in bottom navigation. Displays recipes in grid layout matching RecipeFeed. Long-press on saved recipe opens confirmation modal for removal. Stored locally in AsyncStorage (`@nomup_saved_recipes`) via AppContext — no server database needed since there's no user authentication
 - **Cooking Mode**: Full-screen step-by-step cooking instructions with swipeable navigation, progress dots, and metadata badges (duration, temperature). Accessed via "Start Cooking" button on RecipeDetailScreen. Uses Gemini AI to enhance plain text instructions into structured steps with extracted durations and temperatures. Features integrated cooking timers for steps with timing (e.g., "simmer for 30 minutes" becomes a step with a 30-minute timer)
 - **Cooking Timers**: Interactive countdown timers appear on cooking steps that have duration. Features start/pause/reset controls, progress bar, MM:SS countdown display, and haptic feedback when complete. Timers handle background app state and continue tracking time when app is minimized
 - **Cooking Complete**: After finishing cooking, users can log ingredient usage to update pantry quantities. Uses navigation.reset() to clear the cooking stack and return to pantry
@@ -75,8 +75,8 @@ Preferred communication style: Simple, everyday language.
 **Database Schema**: Located in `shared/schema.ts`, includes users and saved_recipes tables. The schema uses Drizzle ORM with Zod validation via `drizzle-zod`.
 
 ### Data Persistence
-- **Server-side**: PostgreSQL database (configured via DATABASE_URL)
-- **Client-side**: AsyncStorage for local grocery data, shopping lists, and onboarding state
+- **Server-side**: PostgreSQL database (configured via DATABASE_URL) — used for server-only concerns
+- **Client-side**: AsyncStorage for local grocery data, shopping lists, saved recipes, and onboarding state
 
 ### Build & Development
 - Development: `npm run expo:dev` (mobile) + `npm run server:dev` (API)
