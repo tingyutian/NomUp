@@ -253,7 +253,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const saveRecipe = async (recipe: any, enhancedSteps?: any[]) => {
-    const existing = savedRecipes.find(r => r.recipeId === recipe.id);
+    const currentData = await AsyncStorage.getItem(STORAGE_KEYS.SAVED_RECIPES);
+    const currentRecipes: SavedRecipeData[] = currentData ? JSON.parse(currentData) : [];
+
+    const existing = currentRecipes.find(r => r.recipeId === recipe.id);
     if (existing) return;
 
     const newSavedRecipe: SavedRecipeData = {
@@ -271,7 +274,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       enhancedSteps: enhancedSteps || null,
       savedAt: new Date().toISOString(),
     };
-    await saveSavedRecipes([...savedRecipes, newSavedRecipe]);
+    const updated = [...currentRecipes, newSavedRecipe];
+    await AsyncStorage.setItem(STORAGE_KEYS.SAVED_RECIPES, JSON.stringify(updated));
+    setSavedRecipes(updated);
   };
 
   const unsaveRecipe = async (recipeId: string) => {
