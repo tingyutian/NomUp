@@ -495,6 +495,32 @@ function updateManifests(manifests, timestamp, baseUrl, assetsByHash) {
   console.log("Manifests updated");
 }
 
+function buildWebExport(domain) {
+  return new Promise((resolve, reject) => {
+    console.log("Running: npx expo export --platform web --output-dir dist");
+    const exportProcess = spawn("npx", ["expo", "export", "--platform", "web", "--output-dir", "dist"], {
+      stdio: "inherit",
+      env: {
+        ...process.env,
+        EXPO_PUBLIC_DOMAIN: domain,
+      },
+    });
+
+    exportProcess.on("close", (code) => {
+      if (code === 0) {
+        console.log("Web export complete");
+        resolve();
+      } else {
+        reject(new Error(`Web export failed with exit code ${code}`));
+      }
+    });
+
+    exportProcess.on("error", (err) => {
+      reject(new Error(`Web export error: ${err.message}`));
+    });
+  });
+}
+
 async function main() {
   console.log("Building static Expo Go deployment...");
 
@@ -545,11 +571,15 @@ async function main() {
   console.log("Updating manifests and creating landing page...");
   updateManifests(manifests, timestamp, baseUrl, assetsByHash);
 
-  console.log("Build complete! Deploy to:", baseUrl);
-
   if (metroProcess) {
     metroProcess.kill();
+    metroProcess = null;
   }
+
+  console.log("Building web export...");
+  await buildWebExport(domain);
+
+  console.log("Build complete! Deploy to:", baseUrl);
   process.exit(0);
 }
 
