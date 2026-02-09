@@ -104,7 +104,7 @@ Preferred communication style: Simple, everyday language.
 ### AI Services
 - **Google Gemini**: Receipt image analysis via Replit AI Integrations
   - Environment variables: `AI_INTEGRATIONS_GEMINI_API_KEY`, `AI_INTEGRATIONS_GEMINI_BASE_URL`
-  - Models used: `gemini-2.5-flash` for text, `gemini-2.5-flash-image` for image generation
+  - Model used: `gemini-3-flash-preview` for all AI features (receipt scanning, food analysis, recipe generation, cooking step enhancement)
 
 ### Database
 - **PostgreSQL**: Primary data store
