@@ -66,13 +66,12 @@ Preferred communication style: Simple, everyday language.
 ### Backend Architecture
 - **Framework**: Express.js with TypeScript
 - **Database**: PostgreSQL with Drizzle ORM
-- **AI Integration**: Google Gemini via Replit AI Integrations for receipt scanning
+- **AI Integration**: Google Gemini 3 Flash via Replit AI Integrations for receipt scanning, food analysis, recipe generation, and cooking step enhancement
 
 **Key Endpoints**:
 - `POST /api/scan-receipt` - Analyzes receipt images and extracts grocery items
 - `GET /api/recipes/by-ingredient/:itemName` - Fetches recipes using TheMealDB with local fuzzy matching for ingredient scoring (uses lookup table for 70+ common ingredients, Gemini fallback when no results). Returns 5 recipes with match percentage, matched/missing ingredients. Query param `pantry` contains user's pantry items
 - `POST /api/enhance-instructions` - Uses Gemini to transform plain text recipe instructions into structured steps with extracted durations (in minutes) and temperatures. Returns array of CookingStep objects
-- Chat and image generation routes available through `server/replit_integrations/`
 
 **Database Schema**: Located in `shared/schema.ts`, includes users table. The schema uses Drizzle ORM with Zod validation via `drizzle-zod`. Note: saved_recipes table exists in schema but is no longer used — recipes are stored locally via AsyncStorage.
 
