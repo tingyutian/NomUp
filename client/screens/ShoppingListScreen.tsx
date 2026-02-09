@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -9,6 +9,7 @@ import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
 import { ShoppingListItemCard } from "@/components/molecules/ShoppingListItem";
+import { ConfirmationModal } from "@/components/molecules/ConfirmationModal";
 import { AddItemModal } from "@/components/organisms/AddItemModal";
 import { useTheme } from "@/hooks/useTheme";
 import { useApp } from "@/context/AppContext";
@@ -17,6 +18,11 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { ShoppingStackParamList } from "@/navigation/ShoppingStackNavigator";
 
 type Props = NativeStackScreenProps<ShoppingStackParamList, "ShoppingList">;
+
+type ConfirmAction =
+  | { type: "deleteItem"; itemId: string; itemName: string }
+  | { type: "clearList" }
+  | { type: "clearCompleted" };
 
 export default function ShoppingListScreen({ navigation }: Props) {
   const { theme } = useTheme();
@@ -28,11 +34,13 @@ export default function ShoppingListScreen({ navigation }: Props) {
     addToShoppingList,
     removeFromShoppingList,
     toggleShoppingListItem,
+    clearShoppingList,
     groceries,
   } = useApp();
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRecentItems, setShowRecentItems] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
 
   const recentlyUsedItems = useMemo(() => {
     const oneWeekAgo = new Date();
@@ -65,6 +73,52 @@ export default function ShoppingListScreen({ navigation }: Props) {
     setShowRecentItems(false);
   };
 
+  const handleConfirm = useCallback(async () => {
+    if (!confirmAction) return;
+
+    switch (confirmAction.type) {
+      case "deleteItem":
+        await removeFromShoppingList(confirmAction.itemId);
+        break;
+      case "clearList":
+        for (const item of uncheckedItems) {
+          await removeFromShoppingList(item.id);
+        }
+        break;
+      case "clearCompleted":
+        for (const item of checkedItems) {
+          await removeFromShoppingList(item.id);
+        }
+        break;
+    }
+    setConfirmAction(null);
+  }, [confirmAction, uncheckedItems, checkedItems, removeFromShoppingList]);
+
+  const getConfirmModalProps = () => {
+    if (!confirmAction) return { title: "", message: "", confirmLabel: "" };
+
+    switch (confirmAction.type) {
+      case "deleteItem":
+        return {
+          title: "Remove Item",
+          message: `Are you sure you want to remove "${confirmAction.itemName}" from your shopping list?`,
+          confirmLabel: "Remove",
+        };
+      case "clearList":
+        return {
+          title: "Clear Shopping List",
+          message: `Are you sure you want to remove all ${uncheckedItems.length} item${uncheckedItems.length !== 1 ? "s" : ""} from your shopping list?`,
+          confirmLabel: "Clear All",
+        };
+      case "clearCompleted":
+        return {
+          title: "Clear Completed Items",
+          message: `Are you sure you want to remove all ${checkedItems.length} completed item${checkedItems.length !== 1 ? "s" : ""}?`,
+          confirmLabel: "Clear All",
+        };
+    }
+  };
+
   const renderEmptyState = () => (
     <Animated.View
       entering={FadeInDown.delay(200)}
@@ -85,6 +139,8 @@ export default function ShoppingListScreen({ navigation }: Props) {
       </Button>
     </Animated.View>
   );
+
+  const confirmModalProps = getConfirmModalProps();
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
@@ -108,12 +164,29 @@ export default function ShoppingListScreen({ navigation }: Props) {
         ) : (
           <>
             <Animated.View entering={FadeInDown.delay(200)} style={styles.section}>
+              {uncheckedItems.length > 0 ? (
+                <View style={styles.sectionHeader}>
+                  <ThemedText type="small" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+                    {uncheckedItems.length} ITEM{uncheckedItems.length !== 1 ? "S" : ""}
+                  </ThemedText>
+                  <Pressable
+                    onPress={() => setConfirmAction({ type: "clearList" })}
+                    style={styles.clearButton}
+                    testID="button-clear-shopping-list"
+                  >
+                    <Feather name="trash-2" size={14} color={theme.expiredRed} />
+                    <ThemedText type="small" style={{ color: theme.expiredRed, marginLeft: Spacing.xs }}>
+                      Clear All
+                    </ThemedText>
+                  </Pressable>
+                </View>
+              ) : null}
               {uncheckedItems.map((item, index) => (
                 <ShoppingListItemCard
                   key={item.id}
                   item={item}
                   onToggle={() => toggleShoppingListItem(item.id)}
-                  onDelete={() => removeFromShoppingList(item.id)}
+                  onDelete={() => setConfirmAction({ type: "deleteItem", itemId: item.id, itemName: item.name })}
                   testID={`shopping-item-${index}`}
                 />
               ))}
@@ -121,15 +194,27 @@ export default function ShoppingListScreen({ navigation }: Props) {
 
             {checkedItems.length > 0 ? (
               <Animated.View entering={FadeInDown.delay(300)} style={styles.section}>
-                <ThemedText type="small" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-                  COMPLETED
-                </ThemedText>
+                <View style={styles.sectionHeader}>
+                  <ThemedText type="small" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+                    COMPLETED
+                  </ThemedText>
+                  <Pressable
+                    onPress={() => setConfirmAction({ type: "clearCompleted" })}
+                    style={styles.clearButton}
+                    testID="button-clear-completed"
+                  >
+                    <Feather name="trash-2" size={14} color={theme.expiredRed} />
+                    <ThemedText type="small" style={{ color: theme.expiredRed, marginLeft: Spacing.xs }}>
+                      Clear All
+                    </ThemedText>
+                  </Pressable>
+                </View>
                 {checkedItems.map((item, index) => (
                   <ShoppingListItemCard
                     key={item.id}
                     item={item}
                     onToggle={() => toggleShoppingListItem(item.id)}
-                    onDelete={() => removeFromShoppingList(item.id)}
+                    onDelete={() => setConfirmAction({ type: "deleteItem", itemId: item.id, itemName: item.name })}
                     testID={`shopping-item-checked-${index}`}
                   />
                 ))}
@@ -187,6 +272,16 @@ export default function ShoppingListScreen({ navigation }: Props) {
         onAdd={handleAddItem}
         mode="shopping"
       />
+
+      <ConfirmationModal
+        visible={confirmAction !== null}
+        title={confirmModalProps.title}
+        message={confirmModalProps.message}
+        confirmLabel={confirmModalProps.confirmLabel}
+        onConfirm={handleConfirm}
+        onCancel={() => setConfirmAction(null)}
+        testID="confirm-modal"
+      />
     </View>
   );
 }
@@ -204,9 +299,20 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: Spacing.xl,
   },
-  sectionTitle: {
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: Spacing.md,
+  },
+  sectionTitle: {
     letterSpacing: 0.5,
+  },
+  clearButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
   },
   addSection: {
     marginTop: Spacing.md,
