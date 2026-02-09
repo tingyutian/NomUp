@@ -4,77 +4,31 @@ import {
   FlatList,
   StyleSheet,
   ActivityIndicator,
-  Pressable,
-  Image,
-  Dimensions,
+  useWindowDimensions,
 } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import type { RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useHeaderHeight } from "@react-navigation/elements";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import Animated, { FadeIn } from "react-native-reanimated";
 import { ThemedText } from "@/components/ThemedText";
+import {
+  RecipeCard,
+  calculateCardWidth,
+  RECIPE_GRID_PADDING,
+  RECIPE_MAX_CONTENT_WIDTH,
+} from "@/components/molecules/RecipeCard";
 import { useTheme } from "@/hooks/useTheme";
 import { useApp } from "@/context/AppContext";
 import { getApiUrl } from "@/lib/query-client";
-import { Colors, Spacing, BorderRadius } from "@/constants/theme";
+import { Colors, Spacing } from "@/constants/theme";
 import type { RootStackParamList, ScoredRecipe } from "@/navigation/RootStackNavigator";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const CARD_GAP = Spacing.md;
-const HORIZONTAL_PADDING = Spacing.md;
-const CARD_WIDTH = (SCREEN_WIDTH - HORIZONTAL_PADDING * 2 - CARD_GAP) / 2;
 
 type RecipeFeedRouteProp = RouteProp<RootStackParamList, "RecipeFeed">;
 type RecipeFeedNavProp = NativeStackNavigationProp<RootStackParamList, "RecipeFeed">;
-
-interface RecipeCardProps {
-  recipe: ScoredRecipe;
-  index: number;
-  onPress: () => void;
-}
-
-function RecipeCard({ recipe, index, onPress }: RecipeCardProps) {
-  const { theme } = useTheme();
-  const isFullMatch = recipe.matchScore === 100;
-  const badgeColor = recipe.matchScore >= 70 ? Colors.light.success : Colors.light.expiringOrange;
-
-  return (
-    <Animated.View entering={FadeInDown.delay(index * 50).duration(300)}>
-      <Pressable
-        style={[styles.card, { backgroundColor: theme.backgroundDefault }]}
-        onPress={onPress}
-        testID={`recipe-card-${recipe.id}`}
-      >
-        <Image source={{ uri: recipe.thumbnail }} style={styles.cardImage} />
-        <View style={styles.cardContent}>
-          <ThemedText type="bodyMedium" numberOfLines={2} style={styles.cardTitle}>
-            {recipe.name}
-          </ThemedText>
-          <View style={[styles.badge, { backgroundColor: badgeColor }]}>
-            {isFullMatch ? (
-              <>
-                <Feather name="star" size={12} color="#FFF" />
-                <ThemedText type="caption" style={styles.badgeText}>Ready!</ThemedText>
-              </>
-            ) : (
-              <>
-                <Feather name="check" size={12} color="#FFF" />
-                <ThemedText type="caption" style={styles.badgeText}>
-                  {recipe.stats.matched}/{recipe.stats.total}
-                </ThemedText>
-              </>
-            )}
-          </View>
-        </View>
-      </Pressable>
-    </Animated.View>
-  );
-}
 
 function LoadingState({ itemName }: { itemName: string }) {
   const { theme } = useTheme();
@@ -113,14 +67,29 @@ function EmptyState({ itemName }: { itemName: string }) {
   );
 }
 
+function getBadge(recipe: ScoredRecipe) {
+  const isFullMatch = recipe.matchScore === 100;
+  if (isFullMatch) {
+    return { label: "Ready!", color: Colors.light.success, icon: "star" as const };
+  }
+  return {
+    label: `${recipe.stats.matched}/${recipe.stats.total}`,
+    color: recipe.matchScore >= 70 ? Colors.light.success : Colors.light.expiringOrange,
+    icon: "check" as const,
+  };
+}
+
 export default function RecipeFeedScreen() {
   const route = useRoute<RecipeFeedRouteProp>();
   const navigation = useNavigation<RecipeFeedNavProp>();
   const { theme } = useTheme();
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
   const { groceries } = useApp();
   const { itemName } = route.params;
+
+  const cardWidth = calculateCardWidth(screenWidth);
 
   const { data, isLoading, error } = useQuery<{ recipes: ScoredRecipe[] }>({
     queryKey: ["/api/recipes/by-ingredient", itemName],
@@ -168,15 +137,25 @@ export default function RecipeFeedScreen() {
         keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => (
           <RecipeCard
-            recipe={item}
+            title={item.name}
+            thumbnail={item.thumbnail}
+            badge={getBadge(item)}
+            cardWidth={cardWidth}
             index={index}
             onPress={() => navigation.navigate("RecipeDetail", { recipe: item })}
+            testID={`recipe-card-${item.id}`}
           />
         )}
         columnWrapperStyle={styles.row}
         contentContainerStyle={[
           styles.grid,
-          { paddingTop: headerHeight + Spacing.md, paddingBottom: insets.bottom + Spacing.xl },
+          {
+            paddingTop: headerHeight + Spacing.md,
+            paddingBottom: insets.bottom + Spacing.xl,
+            maxWidth: RECIPE_MAX_CONTENT_WIDTH,
+            alignSelf: "center" as const,
+            width: "100%" as unknown as number,
+          },
         ]}
         showsVerticalScrollIndicator={false}
       />
@@ -189,41 +168,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   grid: {
-    paddingHorizontal: HORIZONTAL_PADDING,
+    paddingHorizontal: RECIPE_GRID_PADDING,
   },
   row: {
     justifyContent: "space-between",
     marginBottom: Spacing.md,
-  },
-  card: {
-    width: CARD_WIDTH,
-    borderRadius: BorderRadius.lg,
-    overflow: "hidden",
-  },
-  cardImage: {
-    width: "100%",
-    height: 140,
-  },
-  cardContent: {
-    padding: Spacing.sm,
-    paddingBottom: Spacing.md,
-  },
-  cardTitle: {
-    marginBottom: Spacing.sm,
-    lineHeight: 18,
-  },
-  badge: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.xs,
-    gap: 4,
-  },
-  badgeText: {
-    color: "#FFF",
-    fontWeight: "600",
   },
   loadingContainer: {
     flex: 1,
