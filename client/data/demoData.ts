@@ -414,4 +414,58 @@ export const DEMO_RECIPES = [
       },
     ],
   },
+  {
+    recipe: {
+      id: "52969",
+      name: "Chakchouka",
+      thumbnail: "https://www.themealdb.com/images/media/meals/gpz67p1560458984.jpg",
+      category: "Miscellaneous",
+      instructions: "In a large cast iron skillet or saut\u00e9 pan with a lid, heat oil over medium high heat. Add the onion and saut\u00e9 for 2-3 minutes, until softened. Add the peppers and garlic, and saut\u00e9 for an additional 3-5 minutes. Add the tomatoes, cumin, paprika, salt, and chili powder. Mix well and bring the mixture to a simmer. Reduce the heat to medium low and continue to simmer, uncovered, 10-15 minutes until the mixture has thickened to your desired consistency. (Taste the sauce at this point and adjust for salt and spice, as desired.) Using the back of a spoon, make four craters in the mixture, large enough to hold an egg. Crack one egg into each of the craters. Cover the skillet and simmer for 5-7 minutes, until the eggs have set. Serve immediately with crusty bread or pita.",
+      matchScore: 45,
+      matchedIngredients: ["Tomatoes", "Olive Oil", "Red Pepper", "Green Pepper", "Salt"],
+      missingIngredients: ["Onion", "Garlic", "Cumin", "Paprika", "Chili Powder", "Eggs"],
+      ingredients: ["Tomatoes", "Olive Oil", "Onion", "Red Pepper", "Green Pepper", "Garlic", "Cumin", "Paprika", "Salt", "Chili Powder", "Eggs"],
+      stats: { total: 11, matched: 5, missing: 6 },
+    },
+    enhancedSteps: [
+      {
+        stepNumber: 1,
+        instruction: "Heat olive oil in a large cast iron skillet or saut\u00e9 pan over medium-high heat until the oil shimmers.",
+        duration: 2,
+      },
+      {
+        stepNumber: 2,
+        instruction: "Add the diced onion and saut\u00e9 for 2-3 minutes, stirring occasionally, until softened and translucent.",
+        duration: 3,
+      },
+      {
+        stepNumber: 3,
+        instruction: "Add the sliced red and green peppers and crushed garlic. Saut\u00e9 for an additional 3-5 minutes until the peppers begin to soften.",
+        duration: 5,
+      },
+      {
+        stepNumber: 4,
+        instruction: "Add the tomatoes, cumin, paprika, salt, and chili powder. Mix well and bring the mixture to a simmer.",
+        duration: 2,
+      },
+      {
+        stepNumber: 5,
+        instruction: "Reduce the heat to medium-low and continue to simmer uncovered for 10-15 minutes, stirring occasionally, until the mixture has thickened to your desired consistency. Taste and adjust seasoning as needed.",
+        duration: 15,
+      },
+      {
+        stepNumber: 6,
+        instruction: "Using the back of a spoon, make four craters in the sauce, each large enough to hold an egg. Crack one egg into each crater.",
+      },
+      {
+        stepNumber: 7,
+        instruction: "Cover the skillet with a lid and simmer for 5-7 minutes until the egg whites are set but the yolks are still slightly runny.",
+        duration: 7,
+      },
+      {
+        stepNumber: 8,
+        instruction: "Remove from heat and serve immediately, straight from the skillet, with crusty bread or pita for dipping.",
+      },
+    ],
+  },
 ];
