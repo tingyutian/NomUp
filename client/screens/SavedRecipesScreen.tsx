@@ -4,7 +4,6 @@ import {
   FlatList,
   StyleSheet,
   Pressable,
-  Image,
   useWindowDimensions,
   Modal,
 } from "react-native";
@@ -13,60 +12,21 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
+import {
+  RecipeCard,
+  calculateCardWidth,
+  RECIPE_GRID_PADDING,
+  RECIPE_MAX_CONTENT_WIDTH,
+} from "@/components/molecules/RecipeCard";
 import { useTheme } from "@/hooks/useTheme";
 import { useApp, SavedRecipeData } from "@/context/AppContext";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { recomputeIngredientMatch } from "@/utils/ingredientMatcher";
 import type { RootStackParamList, ScoredRecipe } from "@/navigation/RootStackNavigator";
 
-const CARD_GAP = Spacing.md;
-const HORIZONTAL_PADDING = Spacing.md;
-const MAX_CONTENT_WIDTH = 768;
-
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
-interface RecipeCardProps {
-  recipe: SavedRecipeData;
-  index: number;
-  cardWidth: number;
-  onPress: () => void;
-  onLongPress: () => void;
-}
-
-function RecipeCard({ recipe, index, cardWidth, onPress, onLongPress }: RecipeCardProps) {
-  const { theme } = useTheme();
-
-  return (
-    <Animated.View entering={FadeInDown.delay(index * 50).duration(300)} style={{ width: cardWidth }}>
-      <Pressable
-        style={[styles.card, { backgroundColor: theme.backgroundDefault }]}
-        onPress={onPress}
-        onLongPress={onLongPress}
-        testID={`saved-recipe-card-${recipe.recipeId}`}
-      >
-        {recipe.thumbnail ? (
-          <Image source={{ uri: recipe.thumbnail }} style={styles.cardImage} />
-        ) : (
-          <View style={[styles.cardImage, { backgroundColor: theme.backgroundSecondary, alignItems: "center", justifyContent: "center" }]}>
-            <Feather name="image" size={32} color={theme.textSecondary} />
-          </View>
-        )}
-        <View style={styles.cardContent}>
-          <ThemedText type="bodyMedium" numberOfLines={2} style={styles.cardTitle}>
-            {recipe.name}
-          </ThemedText>
-          <View style={[styles.badge, { backgroundColor: Colors.light.expiredRed }]}>
-            <Feather name="heart" size={12} color="#FFF" />
-            <ThemedText type="caption" style={styles.badgeText}>Saved</ThemedText>
-          </View>
-        </View>
-      </Pressable>
-    </Animated.View>
-  );
-}
 
 function EmptyState() {
   const { theme } = useTheme();
@@ -91,9 +51,8 @@ export default function SavedRecipesScreen() {
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
-  
-  const contentWidth = Math.min(screenWidth, MAX_CONTENT_WIDTH);
-  const cardWidth = (contentWidth - HORIZONTAL_PADDING * 2 - CARD_GAP) / 2;
+
+  const cardWidth = calculateCardWidth(screenWidth);
 
   const { groceries, savedRecipes, unsaveRecipe } = useApp();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -148,11 +107,14 @@ export default function SavedRecipesScreen() {
         keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => (
           <RecipeCard
-            recipe={item}
-            index={index}
+            title={item.name}
+            thumbnail={item.thumbnail}
+            badge={{ label: "Saved", color: Colors.light.expiredRed, icon: "heart" }}
             cardWidth={cardWidth}
+            index={index}
             onPress={() => handleRecipePress(item)}
             onLongPress={() => handleLongPress(item)}
+            testID={`saved-recipe-card-${item.recipeId}`}
           />
         )}
         columnWrapperStyle={styles.row}
@@ -161,7 +123,7 @@ export default function SavedRecipesScreen() {
           {
             paddingTop: headerHeight + Spacing.md,
             paddingBottom: insets.bottom + 100,
-            maxWidth: MAX_CONTENT_WIDTH,
+            maxWidth: RECIPE_MAX_CONTENT_WIDTH,
             alignSelf: "center" as const,
             width: "100%" as unknown as number,
           },
@@ -212,40 +174,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   grid: {
-    paddingHorizontal: HORIZONTAL_PADDING,
+    paddingHorizontal: RECIPE_GRID_PADDING,
   },
   row: {
     justifyContent: "space-between",
     marginBottom: Spacing.md,
-  },
-  card: {
-    borderRadius: BorderRadius.lg,
-    overflow: "hidden",
-  },
-  cardImage: {
-    width: "100%",
-    height: 140,
-  },
-  cardContent: {
-    padding: Spacing.sm,
-    paddingBottom: Spacing.md,
-  },
-  cardTitle: {
-    marginBottom: Spacing.sm,
-    lineHeight: 18,
-  },
-  badge: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.xs,
-    gap: 4,
-  },
-  badgeText: {
-    color: "#FFF",
-    fontWeight: "600",
   },
   emptyContainer: {
     flex: 1,
