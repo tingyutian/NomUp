@@ -97,7 +97,7 @@ Preferred communication style: Simple, everyday language.
 ### Demo Data
 - Demo data loaded via "Load Demo Data" button on empty Pantry screen
 - Includes 24 grocery items (ingredients for Beef and Mustard Pie + Chakchouka ingredients) and 3 saved recipes
-- Demo recipes: "Beef and Mustard Pie" (id: 52874, 100% match), "Avocado dip with new potatoes" (id: 53107, 47% match), and "Chakchouka" (id: 52969, 91% match)
+- Demo recipes: "Beef and Mustard Pie" (id: 52874, 100% match), "Avocado dip with new potatoes" (id: 53107, 47% match), and "Chakchouka" (id: 52969, 100% match)
 - Demo recipe data defined in `client/data/demoData.ts` with pre-computed enhanced cooking steps
 
 ## External Dependencies
