@@ -114,6 +114,8 @@ const styles = StyleSheet.create({
   },
   content: {
     width: "100%",
+    maxWidth: 768,
+    alignSelf: "center",
     borderRadius: BorderRadius["2xl"],
     padding: Spacing["3xl"],
     alignItems: "center",
