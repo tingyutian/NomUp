@@ -25,16 +25,24 @@ export default function CookingCompleteScreen() {
   const navigation = useNavigation<NavigationProp>();
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
-  const { groceries, useGrocery } = useApp();
+  const { groceries, batchUseGroceries } = useApp();
 
   const { recipe } = route.params;
   const [showBanner, setShowBanner] = useState(false);
 
   const ingredientsWithData = useMemo(() => {
     return recipe.usedIngredients.map((ingredientName) => {
-      const grocery = groceries.find(
-        (g) => g.name.toLowerCase() === ingredientName.toLowerCase()
-      );
+      const ingLower = ingredientName.toLowerCase();
+      const grocery = groceries.find((g) => {
+        const gLower = g.name.toLowerCase();
+        if (gLower === ingLower) return true;
+        if (gLower.includes(ingLower) || ingLower.includes(gLower)) return true;
+        const gWords = gLower.split(" ");
+        const ingWords = ingLower.split(" ");
+        return gWords.some((gw) =>
+          ingWords.some((iw) => gw === iw && gw.length > 3)
+        );
+      });
       return {
         id: grocery?.id || ingredientName,
         name: ingredientName,
@@ -62,13 +70,18 @@ export default function CookingCompleteScreen() {
   const handleConfirm = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
+    const updates: Array<{ id: string; amount: number }> = [];
     for (const ing of ingredientsWithData) {
       if (ing.grocery) {
         const amount = usageAmounts[ing.id] || 0;
         if (amount > 0) {
-          await useGrocery(ing.grocery.id, amount);
+          updates.push({ id: ing.grocery.id, amount });
         }
       }
+    }
+
+    if (updates.length > 0) {
+      await batchUseGroceries(updates);
     }
 
     setShowBanner(true);

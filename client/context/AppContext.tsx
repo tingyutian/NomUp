@@ -64,6 +64,7 @@ interface AppContextType {
   updateGrocery: (id: string, updates: Partial<GroceryItem>) => Promise<void>;
   deleteGrocery: (id: string) => Promise<void>;
   useGrocery: (id: string, amount: number) => Promise<void>;
+  batchUseGroceries: (updates: Array<{ id: string; amount: number }>) => Promise<void>;
   throwAwayGrocery: (id: string) => Promise<void>;
   addToShoppingList: (item: Omit<ShoppingListItem, "id" | "checked" | "addedAt">) => Promise<void>;
   addMultipleToShoppingList: (items: Array<Omit<ShoppingListItem, "id" | "checked" | "addedAt">>) => Promise<void>;
@@ -202,6 +203,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const batchUseGroceries = async (updates: Array<{ id: string; amount: number }>) => {
+    let updatedGroceries = [...groceries];
+    const idsToDelete: string[] = [];
+
+    for (const { id, amount } of updates) {
+      const index = updatedGroceries.findIndex(g => g.id === id);
+      if (index === -1) continue;
+
+      const item = updatedGroceries[index];
+      const newUsedAmount = Math.min(item.usedAmount + amount, 10);
+      if (newUsedAmount >= 10) {
+        idsToDelete.push(id);
+        updatedGroceries = updatedGroceries.filter(g => g.id !== id);
+      } else {
+        updatedGroceries[index] = { ...item, usedAmount: newUsedAmount };
+      }
+    }
+
+    await saveGroceries(updatedGroceries);
+    for (const id of idsToDelete) {
+      await cancelItemNotification(id);
+    }
+  };
+
   const throwAwayGrocery = async (id: string) => {
     await deleteGrocery(id);
   };
@@ -316,6 +341,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updateGrocery,
         deleteGrocery,
         useGrocery,
+        batchUseGroceries,
         throwAwayGrocery,
         addToShoppingList,
         addMultipleToShoppingList,
