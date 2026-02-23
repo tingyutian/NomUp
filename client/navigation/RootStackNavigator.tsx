@@ -8,7 +8,10 @@ import RecipeFeedScreen from "@/screens/RecipeFeedScreen";
 import RecipeDetailScreen from "@/screens/RecipeDetailScreen";
 import CookingModeScreen from "@/screens/CookingModeScreen";
 import CookingCompleteScreen from "@/screens/CookingCompleteScreen";
+import LoginScreen from "@/screens/LoginScreen";
+import RegisterScreen from "@/screens/RegisterScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
+import { useAuth } from "@/context/AuthContext";
 import { useApp } from "@/context/AppContext";
 import { Colors } from "@/constants/theme";
 
@@ -44,6 +47,11 @@ export interface CookingRecipe {
   usedIngredients: string[];
 }
 
+export type AuthStackParamList = {
+  Login: undefined;
+  Register: undefined;
+};
+
 export type RootStackParamList = {
   Welcome: undefined;
   Main: undefined;
@@ -55,18 +63,35 @@ export type RootStackParamList = {
   CookingComplete: { recipe: CookingRecipe };
 };
 
+const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+function AuthNavigator() {
+  return (
+    <AuthStack.Navigator screenOptions={{ headerShown: false }}>
+      <AuthStack.Screen name="Login" component={LoginScreen} />
+      <AuthStack.Screen name="Register" component={RegisterScreen} />
+    </AuthStack.Navigator>
+  );
+}
 
 export default function RootStackNavigator() {
   const screenOptions = useScreenOptions();
+  const { user, isAuthLoading } = useAuth();
   const { hasCompletedOnboarding, isLoading } = useApp();
 
-  if (isLoading) {
+  // Wait for both auth state and app data to load
+  if (isAuthLoading || isLoading) {
     return null;
   }
 
+  // Not logged in → show auth screens
+  if (!user) {
+    return <AuthNavigator />;
+  }
+
   return (
-    <Stack.Navigator 
+    <Stack.Navigator
       screenOptions={{
         ...screenOptions,
         contentStyle: { backgroundColor: Colors.light.backgroundRoot },
@@ -86,7 +111,7 @@ export default function RootStackNavigator() {
       <Stack.Screen
         name="ScanReceipt"
         component={ScanReceiptScreen}
-        options={{ 
+        options={{
           headerShown: false,
         }}
       />

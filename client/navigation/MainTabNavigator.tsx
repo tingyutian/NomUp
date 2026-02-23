@@ -11,6 +11,7 @@ import * as Haptics from "expo-haptics";
 import PantryStackNavigator from "@/navigation/PantryStackNavigator";
 import ShoppingStackNavigator from "@/navigation/ShoppingStackNavigator";
 import SavedStackNavigator from "@/navigation/SavedStackNavigator";
+import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
 import { AddItemModal } from "@/components/organisms/AddItemModal";
 import { useTheme } from "@/hooks/useTheme";
 import { useApp, GroceryItem } from "@/context/AppContext";
@@ -22,6 +23,7 @@ export type MainTabParamList = {
   PantryTab: undefined;
   SavedTab: undefined;
   ListTab: undefined;
+  ProfileTab: undefined;
 };
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -217,6 +219,16 @@ export default function MainTabNavigator() {
                 <Feather name="list" size={size} color={color} />
                 <ShoppingBadge count={uncheckedCount} />
               </View>
+            ),
+          }}
+        />
+        <Tab.Screen
+          name="ProfileTab"
+          component={ProfileStackNavigator}
+          options={{
+            title: "PROFILE",
+            tabBarIcon: ({ color, size }) => (
+              <Feather name="user" size={size} color={color} />
             ),
           }}
         />

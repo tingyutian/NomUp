@@ -1,9 +1,10 @@
 import type { Express } from "express";
 import { createServer, type Server } from "node:http";
 import { GoogleGenAI, Type } from "@google/genai";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { db } from "./db";
 import { savedRecipes } from "@shared/schema";
+import { requireAuth } from "./middleware/requireAuth";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
@@ -219,7 +220,7 @@ Return the recipes as a JSON array.`;
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  app.post("/api/scan-receipt", async (req, res) => {
+  app.post("/api/scan-receipt", requireAuth, async (req, res) => {
     try {
       const { imageBase64 } = req.body;
 
@@ -297,7 +298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/analyze-food", async (req, res) => {
+  app.post("/api/analyze-food", requireAuth, async (req, res) => {
     try {
       const { imageBase64 } = req.body;
 
@@ -359,7 +360,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate recipes from expiring ingredients using Gemini 3
-  app.post("/api/generate-recipe", async (req, res) => {
+  app.post("/api/generate-recipe", requireAuth, async (req, res) => {
     try {
       const { expiringIngredients, maxCookingTime, pantryItems = [] } = req.body;
 
@@ -383,7 +384,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Recipe discovery endpoints
-  app.get("/api/recipes/by-ingredient/:itemName", async (req, res) => {
+  app.get("/api/recipes/by-ingredient/:itemName", requireAuth, async (req, res) => {
     try {
       const { itemName } = req.params;
       const pantryJson = req.query.pantry as string;
@@ -591,7 +592,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Enhance recipe instructions using Gemini
-  app.post("/api/enhance-instructions", async (req, res) => {
+  app.post("/api/enhance-instructions", requireAuth, async (req, res) => {
     try {
       const { instructions, recipeName } = req.body;
 
@@ -677,10 +678,14 @@ Return a JSON array of steps.`;
     }
   });
 
-  // Get all saved recipes
-  app.get("/api/saved-recipes", async (req, res) => {
+  // Get all saved recipes for the current user
+  app.get("/api/saved-recipes", requireAuth, async (req, res) => {
     try {
-      const recipes = await db.select().from(savedRecipes).orderBy(savedRecipes.savedAt);
+      const recipes = await db
+        .select()
+        .from(savedRecipes)
+        .where(eq(savedRecipes.userId, req.userId))
+        .orderBy(savedRecipes.savedAt);
       res.json({ recipes: recipes.reverse() });
     } catch (error) {
       console.error("Error fetching saved recipes:", error);
@@ -688,11 +693,19 @@ Return a JSON array of steps.`;
     }
   });
 
-  // Check if a recipe is saved
-  app.get("/api/saved-recipes/check/:recipeId", async (req, res) => {
+  // Check if a recipe is saved by the current user
+  app.get("/api/saved-recipes/check/:recipeId", requireAuth, async (req, res) => {
     try {
       const { recipeId } = req.params;
-      const existing = await db.select().from(savedRecipes).where(eq(savedRecipes.recipeId, recipeId));
+      const existing = await db
+        .select()
+        .from(savedRecipes)
+        .where(
+          and(
+            eq(savedRecipes.recipeId, recipeId),
+            eq(savedRecipes.userId, req.userId),
+          ),
+        );
       res.json({ isSaved: existing.length > 0 });
     } catch (error) {
       console.error("Error checking saved recipe:", error);
@@ -701,33 +714,45 @@ Return a JSON array of steps.`;
   });
 
   // Save a recipe (with optional enhanced steps)
-  app.post("/api/saved-recipes", async (req, res) => {
+  app.post("/api/saved-recipes", requireAuth, async (req, res) => {
     try {
       const { recipe, enhancedSteps } = req.body;
-      
+
       if (!recipe || !recipe.id || !recipe.name) {
         return res.status(400).json({ error: "Recipe data is required" });
       }
 
-      // Check if already saved
-      const existing = await db.select().from(savedRecipes).where(eq(savedRecipes.recipeId, recipe.id));
+      // Check if already saved by this user
+      const existing = await db
+        .select()
+        .from(savedRecipes)
+        .where(
+          and(
+            eq(savedRecipes.recipeId, recipe.id),
+            eq(savedRecipes.userId, req.userId),
+          ),
+        );
       if (existing.length > 0) {
         return res.status(400).json({ error: "Recipe already saved" });
       }
 
-      const [saved] = await db.insert(savedRecipes).values({
-        recipeId: recipe.id,
-        name: recipe.name,
-        thumbnail: recipe.thumbnail || null,
-        category: recipe.category || null,
-        instructions: recipe.instructions || null,
-        matchScore: recipe.matchScore || 0,
-        matchedIngredients: recipe.matchedIngredients || [],
-        missingIngredients: recipe.missingIngredients || [],
-        ingredients: recipe.ingredients || [],
-        stats: recipe.stats || null,
-        enhancedSteps: enhancedSteps || null,
-      }).returning();
+      const [saved] = await db
+        .insert(savedRecipes)
+        .values({
+          userId: req.userId,
+          recipeId: recipe.id,
+          name: recipe.name,
+          thumbnail: recipe.thumbnail || null,
+          category: recipe.category || null,
+          instructions: recipe.instructions || null,
+          matchScore: recipe.matchScore || 0,
+          matchedIngredients: recipe.matchedIngredients || [],
+          missingIngredients: recipe.missingIngredients || [],
+          ingredients: recipe.ingredients || [],
+          stats: recipe.stats || null,
+          enhancedSteps: enhancedSteps || null,
+        })
+        .returning();
 
       res.json({ recipe: saved });
     } catch (error) {
@@ -737,10 +762,18 @@ Return a JSON array of steps.`;
   });
 
   // Get a specific saved recipe (to check for enhanced steps)
-  app.get("/api/saved-recipes/:recipeId", async (req, res) => {
+  app.get("/api/saved-recipes/:recipeId", requireAuth, async (req, res) => {
     try {
       const { recipeId } = req.params;
-      const [recipe] = await db.select().from(savedRecipes).where(eq(savedRecipes.recipeId, recipeId));
+      const [recipe] = await db
+        .select()
+        .from(savedRecipes)
+        .where(
+          and(
+            eq(savedRecipes.recipeId, recipeId),
+            eq(savedRecipes.userId, req.userId),
+          ),
+        );
       if (!recipe) {
         return res.status(404).json({ error: "Recipe not found" });
       }
@@ -752,11 +785,11 @@ Return a JSON array of steps.`;
   });
 
   // Update enhanced steps for a saved recipe
-  app.patch("/api/saved-recipes/:recipeId/steps", async (req, res) => {
+  app.patch("/api/saved-recipes/:recipeId/steps", requireAuth, async (req, res) => {
     try {
       const { recipeId } = req.params;
       const { enhancedSteps } = req.body;
-      
+
       if (!enhancedSteps) {
         return res.status(400).json({ error: "Enhanced steps are required" });
       }
@@ -764,13 +797,18 @@ Return a JSON array of steps.`;
       const [updated] = await db
         .update(savedRecipes)
         .set({ enhancedSteps })
-        .where(eq(savedRecipes.recipeId, recipeId))
+        .where(
+          and(
+            eq(savedRecipes.recipeId, recipeId),
+            eq(savedRecipes.userId, req.userId),
+          ),
+        )
         .returning();
-      
+
       if (!updated) {
         return res.status(404).json({ error: "Recipe not found" });
       }
-      
+
       res.json({ recipe: updated });
     } catch (error) {
       console.error("Error updating saved recipe steps:", error);
@@ -779,10 +817,17 @@ Return a JSON array of steps.`;
   });
 
   // Delete a saved recipe
-  app.delete("/api/saved-recipes/:recipeId", async (req, res) => {
+  app.delete("/api/saved-recipes/:recipeId", requireAuth, async (req, res) => {
     try {
       const { recipeId } = req.params;
-      await db.delete(savedRecipes).where(eq(savedRecipes.recipeId, recipeId));
+      await db
+        .delete(savedRecipes)
+        .where(
+          and(
+            eq(savedRecipes.recipeId, recipeId),
+            eq(savedRecipes.userId, req.userId),
+          ),
+        );
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting saved recipe:", error);
