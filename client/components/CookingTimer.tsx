@@ -28,6 +28,13 @@ export function CookingTimer({ durationMinutes, onComplete }: CookingTimerProps)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appStateRef = useRef(AppState.currentState);
   const pausedTimeRef = useRef<number | null>(null);
+
+  // Issue #13: Store callbacks in refs so the timer effect doesn't need them
+  // in its dependency array, which would cause interval recreation on every render.
+  const onCompleteRef = useRef(onComplete);
+  const playAlarmRef = useRef(playAlarm);
+  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
+  useEffect(() => { playAlarmRef.current = playAlarm; }, [playAlarm]);
   
   const pulseScale = useSharedValue(1);
   const progressWidth = useSharedValue(0);
@@ -72,29 +79,42 @@ export function CookingTimer({ durationMinutes, onComplete }: CookingTimerProps)
     };
   }, [isRunning]);
 
+  // Issue #13: Only `isRunning` controls interval creation/destruction.
+  // Previously `secondsLeft` was in the dep array, which re-created the interval
+  // every tick — causing potential multi-interval drift on slow devices.
+  // The tick callback uses `setSecondsLeft(prev => ...)` (functional updater) so
+  // it never closes over a stale `secondsLeft`. Callbacks are accessed via refs.
   useEffect(() => {
-    if (isRunning && secondsLeft > 0) {
-      intervalRef.current = setInterval(() => {
-        setSecondsLeft(prev => {
-          if (prev <= 1) {
-            clearInterval(intervalRef.current!);
-            setIsRunning(false);
-            setIsComplete(true);
-            playAlarm();
-            onComplete?.();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    if (!isRunning) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      return;
     }
+
+    intervalRef.current = setInterval(() => {
+      setSecondsLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(intervalRef.current!);
+          intervalRef.current = null;
+          setIsRunning(false);
+          setIsComplete(true);
+          playAlarmRef.current?.();
+          onCompleteRef.current?.();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
 
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
-  }, [isRunning, secondsLeft, onComplete, playAlarm]);
+  }, [isRunning]); // only isRunning drives interval lifecycle
 
   useEffect(() => {
     progressWidth.value = withTiming(progress * 100, { 

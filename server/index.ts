@@ -6,6 +6,9 @@ import * as path from "path";
 
 const app = express();
 const log = console.log;
+// Issue #6: suppress non-essential startup/debug logs in production.
+const isDev = process.env.NODE_ENV !== "production";
+const debug = (...args: unknown[]): void => { if (isDev) log(...args); };
 
 declare module "http" {
   interface IncomingMessage {
@@ -153,8 +156,8 @@ function serveLandingPage({
   const baseUrl = `${protocol}://${host}`;
   const expsUrl = `${host}`;
 
-  log(`baseUrl`, baseUrl);
-  log(`expsUrl`, expsUrl);
+  debug(`baseUrl`, baseUrl);
+  debug(`expsUrl`, expsUrl);
 
   const html = landingPageTemplate
     .replace(/BASE_URL_PLACEHOLDER/g, baseUrl)
@@ -175,13 +178,13 @@ function configureExpoAndLanding(app: express.Application) {
   const landingPageTemplate = fs.readFileSync(templatePath, "utf-8");
   const appName = getAppName();
 
-  log("Serving static Expo files with dynamic manifest routing");
+  debug("Serving static Expo files with dynamic manifest routing");
 
   const webDistPath = path.resolve(process.cwd(), "dist");
   const hasWebBuild = fs.existsSync(path.join(webDistPath, "index.html"));
 
   if (hasWebBuild) {
-    log("Web build found in dist/ — serving for desktop browsers");
+    debug("Web build found in dist/ — serving for desktop browsers");
     app.use("/_expo", express.static(path.join(webDistPath, "_expo")));
     app.use("/assets", express.static(path.join(webDistPath, "assets")));
     app.use("/favicon.ico", express.static(path.join(webDistPath, "favicon.ico")));
@@ -216,7 +219,7 @@ function configureExpoAndLanding(app: express.Application) {
   app.use("/assets", express.static(path.resolve(process.cwd(), "assets")));
   app.use(express.static(path.resolve(process.cwd(), "static-build")));
 
-  log("Expo routing: Checking expo-platform header on / and /manifest");
+  debug("Expo routing: Checking expo-platform header on / and /manifest");
 }
 
 function setupErrorHandler(app: express.Application) {
@@ -236,7 +239,8 @@ function setupErrorHandler(app: express.Application) {
       return next(err);
     }
 
-    return res.status(status).json({ message });
+    // Issue #5: Standardise all error responses to { error } to match route handlers.
+    return res.status(status).json({ error: message });
   });
 }
 

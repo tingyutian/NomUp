@@ -212,7 +212,9 @@ export default function PantryScreen({ navigation }: Props) {
       <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center" }}>
         Scan a receipt or add items manually
       </ThemedText>
-      {groceries.length === 0 ? (
+      {/* Issue #14: __DEV__ is true in Expo dev/preview builds and false in
+          production builds — no extra env config needed. */}
+      {__DEV__ && groceries.length === 0 ? (
         <Pressable
           onPress={loadDemoData}
           disabled={loadingDemo}

@@ -87,12 +87,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const accessToken = params.get("access_token");
       const refreshToken = params.get("refresh_token");
 
-      if (accessToken && refreshToken) {
-        await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
+      // Issue #12: Both tokens are required. Passing null to setSession() can
+      // leave the user in a broken partially-authenticated state. Throw so the
+      // caller can surface a clear error message to the user.
+      if (!accessToken || !refreshToken) {
+        throw new Error(
+          "OAuth sign-in failed: missing tokens in redirect URL. Please try again."
+        );
       }
+
+      await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
     }
   };
 

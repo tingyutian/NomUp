@@ -14,7 +14,23 @@ const ai = new GoogleGenAI({
   },
 });
 
-const GEMINI_MODEL = "gemini-3-flash-preview";
+// Issue #1: Allow runtime override via env var so preview-model deprecations
+// don't silently break production. Defaults to a stable GA model.
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+
+// Issue #6: Emit debug-level logs only outside production.
+const isDev = process.env.NODE_ENV !== "production";
+const debug = (...args: unknown[]): void => { if (isDev) console.log(...args); };
+
+// Issue #4: Generic timeout wrapper for SDK calls that don't accept AbortSignal.
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+    ),
+  ]);
+}
 
 interface ExpiringIngredient {
   id: string;
@@ -184,33 +200,44 @@ For each recipe, provide:
 
 Return the recipes as a JSON array.`;
 
-  const response = await ai.models.generateContent({
-    model: GEMINI_MODEL,
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: recipeSchema,
-    },
-  });
+  // Issue #4: 30-second timeout prevents indefinite hangs on slow Gemini responses.
+  const response = await withTimeout(
+    ai.models.generateContent({
+      model: GEMINI_MODEL,
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: recipeSchema,
+      },
+    }),
+    30_000,
+    "Gemini generateRecipes"
+  );
 
   const text = response.text || "";
   let recipes: any[] = [];
 
   try {
-    recipes = JSON.parse(text);
-    recipes = recipes.map((recipe: any, index: number) => ({
-      ...recipe,
-      id: `ai-${Date.now()}-${index}`,
-      thumbnail: null,
-      source: "ai",
-      ingredients: recipe.usedIngredients.map((i: any) => i.name),
-      matchedIngredients: recipe.usedIngredients.map((i: any) => i.name),
-      stats: {
-        total: recipe.usedIngredients.length + recipe.missingIngredients.length,
-        matched: recipe.usedIngredients.length,
-        missing: recipe.missingIngredients.length,
-      },
-    }));
+    // Issue #2: Validate parsed shape before mapping — Gemini output is non-deterministic.
+    const parsed = JSON.parse(text);
+    if (!Array.isArray(parsed)) {
+      console.error("Gemini returned non-array recipe response:", typeof parsed);
+      recipes = [];
+    } else {
+      recipes = parsed.map((recipe: any, index: number) => ({
+        ...recipe,
+        id: `ai-${Date.now()}-${index}`,
+        thumbnail: null,
+        source: "ai",
+        ingredients: recipe.usedIngredients.map((i: any) => i.name),
+        matchedIngredients: recipe.usedIngredients.map((i: any) => i.name),
+        stats: {
+          total: recipe.usedIngredients.length + recipe.missingIngredients.length,
+          matched: recipe.usedIngredients.length,
+          missing: recipe.missingIngredients.length,
+        },
+      }));
+    }
   } catch (parseError) {
     console.error("Error parsing Gemini recipe response:", parseError);
     recipes = [];
@@ -228,7 +255,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Image data is required" });
       }
 
-      const prompt = `Analyze this grocery receipt image and extract grocery items. 
+      // Issue #3: Reject oversized payloads before forwarding to Gemini.
+      // Base64 expands by ~33%, so 5 MB binary ≈ 6.8 MB in base64 characters.
+      if (imageBase64.length > 6_800_000) {
+        return res.status(413).json({ error: "Image too large. Maximum size is 5 MB." });
+      }
+
+      const prompt = `Analyze this grocery receipt image and extract grocery items.
       For each item, identify:
       - name: the product name ONLY (clean it up, remove store codes, and REMOVE any weight/size info like "1LB", "12oz", "2kg" from the name)
       - category: one of: Produce, Dairy, Bakery, Meat, Beverages, Grains, Snacks, Condiments
@@ -248,43 +281,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       If you cannot identify any items, return an empty array: []`;
 
-      const response = await ai.models.generateContent({
-        model: GEMINI_MODEL,
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { text: prompt },
-              {
-                inlineData: {
-                  mimeType: "image/jpeg",
-                  data: imageBase64,
+      // Issue #4: 30-second timeout prevents the request from hanging indefinitely.
+      const response = await withTimeout(
+        ai.models.generateContent({
+          model: GEMINI_MODEL,
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: prompt },
+                {
+                  inlineData: {
+                    mimeType: "image/jpeg",
+                    data: imageBase64,
+                  },
                 },
-              },
-            ],
-          },
-        ],
-      });
+              ],
+            },
+          ],
+        }),
+        30_000,
+        "Gemini scan-receipt"
+      );
 
       const text = response.text || "";
-      
+
       let items: ScannedItem[] = [];
       try {
         const jsonMatch = text.match(/\[[\s\S]*\]/);
         if (jsonMatch) {
+          // Issue #2: Guard against non-array shapes before calling .map().
           const parsed = JSON.parse(jsonMatch[0]);
-          items = parsed.map((item: any, index: number) => ({
-            id: `${Date.now()}-${index}`,
-            name: item.name || "Unknown Item",
-            category: item.category || "Grains",
-            price: parseFloat(item.price) || 0,
-            quantity: parseInt(item.quantity) || 1,
-            unit: item.unit || "units",
-            unitAmount: parseFloat(item.unitAmount) || 1,
-            expiresIn: getDefaultExpiration(item.category || "Grains"),
-          }));
-          
-          items = mergeDuplicateItems(items);
+          if (!Array.isArray(parsed)) {
+            console.error("Gemini scan-receipt returned non-array shape:", typeof parsed);
+          } else {
+            items = parsed.map((item: any, index: number) => ({
+              id: `${Date.now()}-${index}`,
+              name: item.name || "Unknown Item",
+              category: item.category || "Grains",
+              price: parseFloat(item.price) || 0,
+              quantity: parseInt(item.quantity) || 1,
+              unit: item.unit || "units",
+              unitAmount: parseFloat(item.unitAmount) || 1,
+              expiresIn: getDefaultExpiration(item.category || "Grains"),
+            }));
+            items = mergeDuplicateItems(items);
+          }
         }
       } catch (parseError) {
         console.error("Error parsing Gemini response:", parseError);
@@ -306,42 +348,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Image data is required" });
       }
 
+      // Issue #3: Reject oversized payloads before forwarding to Gemini.
+      if (imageBase64.length > 6_800_000) {
+        return res.status(413).json({ error: "Image too large. Maximum size is 5 MB." });
+      }
+
       const prompt = `Analyze this food image and identify the ingredients that were likely used to make this dish or that are visible in the image.
-      
+
       For each ingredient, provide:
       - name: the ingredient name
       - category: one of: Produce, Dairy, Bakery, Meat, Beverages, Grains, Snacks, Condiments
-      
+
       Return ONLY a valid JSON array:
       [{"name": "...", "category": "..."}]
-      
+
       If you cannot identify any ingredients, return an empty array: []`;
 
-      const response = await ai.models.generateContent({
-        model: GEMINI_MODEL,
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { text: prompt },
-              {
-                inlineData: {
-                  mimeType: "image/jpeg",
-                  data: imageBase64,
+      // Issue #4: 30-second timeout prevents indefinite hangs.
+      const response = await withTimeout(
+        ai.models.generateContent({
+          model: GEMINI_MODEL,
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: prompt },
+                {
+                  inlineData: {
+                    mimeType: "image/jpeg",
+                    data: imageBase64,
+                  },
                 },
-              },
-            ],
-          },
-        ],
-      });
+              ],
+            },
+          ],
+        }),
+        30_000,
+        "Gemini analyze-food"
+      );
 
       const text = response.text || "";
-      
+
       let ingredients: { name: string; category: string }[] = [];
       try {
         const jsonMatch = text.match(/\[[\s\S]*\]/);
         if (jsonMatch) {
-          ingredients = JSON.parse(jsonMatch[0]);
+          // Issue #2: Validate shape before using the parsed value.
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (Array.isArray(parsed)) {
+            ingredients = parsed;
+          } else {
+            console.error("Gemini analyze-food returned non-array shape:", typeof parsed);
+          }
         }
       } catch (parseError) {
         console.error("Error parsing Gemini response:", parseError);
@@ -368,7 +426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "At least one expiring ingredient is required" });
       }
 
-      console.log(`Generating recipes for ${expiringIngredients.length} expiring ingredients...`);
+      debug(`Generating recipes for ${expiringIngredients.length} expiring ingredients...`);
 
       const recipes = await generateRecipesWithGemini(
         expiringIngredients,
@@ -442,10 +500,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!searchTerm) {
         try {
           const simplifyPrompt = `Simplify this grocery item to a basic ingredient for recipe search: "${itemName}". Return ONLY the single-word base ingredient (e.g., "Boneless Chicken Breast" → "chicken"). One word only.`;
-          const simplifyResponse = await ai.models.generateContent({
-            model: GEMINI_MODEL,
-            contents: [{ role: "user", parts: [{ text: simplifyPrompt }] }],
-          });
+          // Issue #4: timeout on Gemini simplify call
+          const simplifyResponse = await withTimeout(
+            ai.models.generateContent({
+              model: GEMINI_MODEL,
+              contents: [{ role: "user", parts: [{ text: simplifyPrompt }] }],
+            }),
+            15_000,
+            "Gemini simplify ingredient"
+          );
           const simplifiedName = simplifyResponse.text?.trim().toLowerCase();
           if (simplifiedName && simplifiedName.length > 0 && simplifiedName.length < 20) {
             searchTerm = simplifiedName;
@@ -454,17 +517,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           searchTerm = lowerItemName.split(" ").pop() || lowerItemName; // Use last word as fallback
         }
       }
-      
-      console.log(`Ingredient lookup: "${itemName}" → "${searchTerm}"`);
-      
-      // 2. Fetch from TheMealDB
+
+      debug(`Ingredient lookup: "${itemName}" → "${searchTerm}"`);
+
+      // 2. Fetch from TheMealDB — Issue #4: AbortController enforces a 15-second timeout.
       const mealDbUrl = `https://www.themealdb.com/api/json/v1/1/filter.php?i=${encodeURIComponent(searchTerm)}`;
-      const mealResponse = await fetch(mealDbUrl);
-      const mealData = await mealResponse.json();
-      
+      const mealController = new AbortController();
+      const mealTimeout = setTimeout(() => mealController.abort(), 15_000);
+      let mealData: any;
+      try {
+        const mealResponse = await fetch(mealDbUrl, { signal: mealController.signal });
+        mealData = await mealResponse.json();
+      } finally {
+        clearTimeout(mealTimeout);
+      }
+
       if (!mealData.meals) {
         // Fallback to Gemini-generated recipes when TheMealDB has no results
-        console.log(`No recipes in TheMealDB for "${searchTerm}", falling back to Gemini...`);
+        debug(`No recipes in TheMealDB for "${searchTerm}", falling back to Gemini...`);
         try {
           const fallbackRecipes = await generateRecipesWithGemini([{
             id: "fallback",
@@ -473,26 +543,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
             unit: "units",
             daysUntilExpiration: 3,
           }], userPantry, 30);
-          
+
           if (fallbackRecipes.length > 0) {
             return res.json({ recipes: fallbackRecipes, source: "ai" });
           }
         } catch (geminiError) {
           console.error("Gemini fallback failed:", geminiError);
         }
-        return res.json({ recipes: [] });
+        return res.json({ recipes: [], total: 0 });
       }
 
-      // 2. Get full recipe details (includes ingredients & instructions)
-      // Limit to 5 recipes for faster response
-      const mealsToFetch = mealData.meals.slice(0, 5);
-      console.log(`Fetching ${mealsToFetch.length} recipe details...`);
-      
+      // 3. Get full recipe details (includes ingredients & instructions).
+      // Issue #8: Respect optional ?limit and ?page query params for pagination;
+      // default limit is 10, maximum is 50.
+      const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
+      const page = parseInt(req.query.page as string) || 0;
+      const totalMeals = mealData.meals.length;
+      const mealsToFetch = mealData.meals.slice(page * limit, (page + 1) * limit);
+      debug(`Fetching ${mealsToFetch.length} recipe details (page ${page}, limit ${limit}, total ${totalMeals})...`);
+
       const recipePromises = mealsToFetch.map(async (meal: any) => {
         try {
           const detailUrl = `https://www.themealdb.com/api/json/v1/1/lookup.php?i=${meal.idMeal}`;
-          const detailResponse = await fetch(detailUrl);
-          const detailData = await detailResponse.json();
+          // Issue #4: per-lookup timeout
+          const detailController = new AbortController();
+          const detailTimeout = setTimeout(() => detailController.abort(), 10_000);
+          let detailData: any;
+          try {
+            const detailResponse = await fetch(detailUrl, { signal: detailController.signal });
+            detailData = await detailResponse.json();
+          } finally {
+            clearTimeout(detailTimeout);
+          }
           const fullMeal = detailData.meals?.[0];
           
           if (!fullMeal) return null;
@@ -521,16 +603,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const recipes = (await Promise.all(recipePromises)).filter(Boolean);
-      console.log(`Fetched ${recipes.length} recipes successfully`);
+      debug(`Fetched ${recipes.length} recipes successfully`);
 
       if (recipes.length === 0) {
-        return res.json({ recipes: [] });
+        return res.json({ recipes: [], total: totalMeals });
       }
 
-      // 3. Score recipes with fast local matching (no AI call)
+      // 4. Score recipes with fast local matching (no AI call)
       const pantryNames = userPantry.map((item) => item.name.toLowerCase());
       const commonStaples = ["salt", "pepper", "water", "oil", "olive oil", "vegetable oil", "sugar", "flour"];
-      
+
       // Helper to check if pantry has an ingredient (fuzzy match)
       const pantryHasIngredient = (ingredient: string): boolean => {
         const ing = ingredient.toLowerCase();
@@ -549,7 +631,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       };
 
-      console.log("Scoring recipes with local matching...");
+      debug("Scoring recipes with local matching...");
       
       // 4. Combine recipe data with scoring
       const scoredRecipes = recipes.map((recipe: any) => {
@@ -584,7 +666,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 5. Sort by match score (highest first)
       scoredRecipes.sort((a: any, b: any) => b.matchScore - a.matchScore);
 
-      res.json({ recipes: scoredRecipes });
+      // Issue #8: Include total so the client can render "load more" controls.
+      res.json({ recipes: scoredRecipes, total: totalMeals });
     } catch (error) {
       console.error("Recipe fetch error:", error);
       res.status(500).json({ error: "Failed to fetch recipes" });
@@ -600,7 +683,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Instructions are required" });
       }
 
-      console.log(`Enhancing instructions for "${recipeName}"...`);
+      debug(`Enhancing instructions for "${recipeName}"...`);
 
       const enhanceSchema = {
         type: Type.ARRAY,
@@ -636,22 +719,31 @@ CRITICAL RULES:
 
 Return a JSON array of steps.`;
 
-      const response = await ai.models.generateContent({
-        model: GEMINI_MODEL,
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: enhanceSchema,
-        },
-      });
+      // Issue #4: timeout on the Gemini enhance call.
+      const response = await withTimeout(
+        ai.models.generateContent({
+          model: GEMINI_MODEL,
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: enhanceSchema,
+          },
+        }),
+        30_000,
+        "Gemini enhance-instructions"
+      );
 
       const text = response.text || "";
       let steps: any[] = [];
 
       try {
-        steps = JSON.parse(text);
+        // Issue #2: Validate array shape before mapping.
+        const parsed = JSON.parse(text);
+        if (!Array.isArray(parsed)) {
+          throw new Error("Gemini returned non-array steps response");
+        }
         // Ensure stepNumber is sequential
-        steps = steps.map((step: any, index: number) => ({
+        steps = parsed.map((step: any, index: number) => ({
           stepNumber: index + 1,
           instruction: step.instruction,
           duration: step.duration || undefined,
@@ -659,7 +751,7 @@ Return a JSON array of steps.`;
         }));
       } catch (parseError) {
         console.error("Error parsing Gemini response:", parseError);
-        // Fallback to basic parsing
+        // Fallback to basic line-by-line parsing
         steps = instructions
           .split(/\r?\n/)
           .map((line: string) => line.trim())
@@ -670,7 +762,7 @@ Return a JSON array of steps.`;
           }));
       }
 
-      console.log(`Enhanced into ${steps.length} steps`);
+      debug(`Enhanced into ${steps.length} steps`);
       res.json({ steps });
     } catch (error) {
       console.error("Error enhancing instructions:", error);
@@ -680,6 +772,8 @@ Return a JSON array of steps.`;
 
   // Get all saved recipes for the current user
   app.get("/api/saved-recipes", requireAuth, async (req, res) => {
+    // Issue #7: Defense-in-depth guard — middleware sets this, but verify locally.
+    if (!req.userId) return res.status(401).json({ error: "Unauthorized" });
     try {
       const recipes = await db
         .select()
@@ -695,6 +789,7 @@ Return a JSON array of steps.`;
 
   // Check if a recipe is saved by the current user
   app.get("/api/saved-recipes/check/:recipeId", requireAuth, async (req, res) => {
+    if (!req.userId) return res.status(401).json({ error: "Unauthorized" });
     try {
       const { recipeId } = req.params;
       const existing = await db
@@ -715,6 +810,7 @@ Return a JSON array of steps.`;
 
   // Save a recipe (with optional enhanced steps)
   app.post("/api/saved-recipes", requireAuth, async (req, res) => {
+    if (!req.userId) return res.status(401).json({ error: "Unauthorized" });
     try {
       const { recipe, enhancedSteps } = req.body;
 
@@ -763,6 +859,7 @@ Return a JSON array of steps.`;
 
   // Get a specific saved recipe (to check for enhanced steps)
   app.get("/api/saved-recipes/:recipeId", requireAuth, async (req, res) => {
+    if (!req.userId) return res.status(401).json({ error: "Unauthorized" });
     try {
       const { recipeId } = req.params;
       const [recipe] = await db
@@ -786,6 +883,7 @@ Return a JSON array of steps.`;
 
   // Update enhanced steps for a saved recipe
   app.patch("/api/saved-recipes/:recipeId/steps", requireAuth, async (req, res) => {
+    if (!req.userId) return res.status(401).json({ error: "Unauthorized" });
     try {
       const { recipeId } = req.params;
       const { enhancedSteps } = req.body;
@@ -818,6 +916,7 @@ Return a JSON array of steps.`;
 
   // Delete a saved recipe
   app.delete("/api/saved-recipes/:recipeId", requireAuth, async (req, res) => {
+    if (!req.userId) return res.status(401).json({ error: "Unauthorized" });
     try {
       const { recipeId } = req.params;
       await db

@@ -5,6 +5,7 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
+import { Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -99,9 +100,72 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+// ── Issue #9: Typed Supabase row shapes (snake_case) ─────────────────────────
+// These mirror the Supabase table columns so TypeScript catches renames at
+// compile time instead of silently producing `undefined` values in the UI.
+
+interface GroceryRow {
+  id: string;
+  user_id: string;
+  name: string;
+  category: string;
+  quantity: string;         // Supabase returns numeric as string
+  unit: string;
+  unit_amount: string;
+  price: string;
+  expires_in: number;
+  expiration_date: string | Date;
+  storage_location: string;
+  added_at: string | Date;
+  used_amount: string;
+}
+
+interface ShoppingRow {
+  id: string;
+  user_id: string;
+  name: string;
+  quantity: string;
+  unit: string;
+  checked: boolean;
+  added_at: string | Date;
+}
+
+interface RecipeRow {
+  id: string;
+  user_id: string;
+  recipe_id: string;
+  name: string;
+  thumbnail: string | null;
+  category: string | null;
+  instructions: string | null;
+  match_score: number | null;
+  matched_ingredients: string[] | null;
+  missing_ingredients: string[] | null;
+  ingredients: string[] | null;
+  stats: { total: number; matched: number; missing: number } | null;
+  enhanced_steps: Array<{
+    stepNumber: number;
+    instruction: string;
+    duration?: number;
+    temperature?: string;
+  }> | null;
+  saved_at: string | Date;
+}
+
+// ── Issue #11: Centralised user-facing mutation error notification ─────────────
+// Reverts are handled by each caller; this shows the alert and logs the error.
+function notifyMutationError(operation: string, error: unknown): void {
+  console.error(`Error during ${operation}:`, error);
+  Alert.alert(
+    "Something went wrong",
+    `Could not ${operation}. Your change has been reverted.`,
+    [{ text: "OK" }],
+  );
+}
+
 // ── Row mappers (snake_case DB → camelCase app) ──────────────────────────────
 
-function mapGroceryFromDB(row: any): GroceryItem {
+function mapGroceryFromDB(row: GroceryRow): GroceryItem {
   return {
     id: row.id,
     name: row.name,
@@ -142,7 +206,7 @@ function mapGroceryToDB(item: GroceryItem, userId: string) {
   };
 }
 
-function mapShoppingFromDB(row: any): ShoppingListItem {
+function mapShoppingFromDB(row: ShoppingRow): ShoppingListItem {
   return {
     id: row.id,
     name: row.name,
@@ -175,7 +239,7 @@ function mapShoppingToDB(
   };
 }
 
-function mapRecipeFromDB(row: any): SavedRecipeData {
+function mapRecipeFromDB(row: RecipeRow): SavedRecipeData {
   return {
     id: row.id,
     recipeId: row.recipe_id,
@@ -253,10 +317,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setSavedRecipes(recipesData.map(mapRecipeFromDB));
       }
 
-      // Onboarding flag is stored per-user in AsyncStorage
+      // Issue #10: AsyncStorage can fail on restricted or full storage — catch
+      // gracefully so a storage error doesn't break the entire data load.
       const onboardingKey = `@nomup_onboarding_${uid}`;
-      const onboardingData = await AsyncStorage.getItem(onboardingKey);
-      setHasCompletedOnboarding(onboardingData === "true");
+      try {
+        const onboardingData = await AsyncStorage.getItem(onboardingKey);
+        setHasCompletedOnboarding(onboardingData === "true");
+      } catch {
+        console.warn("Failed to read onboarding state from AsyncStorage");
+      }
     } catch (error) {
       console.error("Error loading data:", error);
     } finally {
@@ -291,9 +360,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .insert(items.map((item) => mapGroceryToDB(item, userId)));
 
     if (error) {
-      // Revert on failure
+      // Revert on failure and notify the user (Issue #11).
       setGroceries(groceries);
-      console.error("Error adding groceries:", error);
+      notifyMutationError("add groceries", error);
       return;
     }
 
@@ -349,7 +418,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       setGroceries(prev);
-      console.error("Error updating grocery:", error);
+      notifyMutationError("update grocery", error);
     }
   };
 
@@ -367,7 +436,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       setGroceries(prev);
-      console.error("Error deleting grocery:", error);
+      notifyMutationError("delete grocery", error);
       return;
     }
 
@@ -455,7 +524,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       setShoppingList(shoppingList);
-      console.error("Error adding to shopping list:", error);
+      notifyMutationError("add to shopping list", error);
     }
   };
 
@@ -481,7 +550,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       setShoppingList(shoppingList);
-      console.error("Error adding multiple to shopping list:", error);
+      notifyMutationError("add items to shopping list", error);
     }
   };
 
@@ -498,7 +567,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       setShoppingList(prev);
-      console.error("Error removing from shopping list:", error);
+      notifyMutationError("remove from shopping list", error);
     }
   };
 
@@ -526,7 +595,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       setShoppingList(prev);
-      console.error("Error updating shopping list item:", error);
+      notifyMutationError("update shopping list item", error);
     }
   };
 
@@ -549,7 +618,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       setShoppingList(prev);
-      console.error("Error clearing shopping list:", error);
+      notifyMutationError("clear shopping list", error);
     }
   };
 
@@ -601,7 +670,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       setSavedRecipes(savedRecipes);
-      console.error("Error saving recipe:", error);
+      notifyMutationError("save recipe", error);
     } else if (data) {
       // Replace temp ID with real DB ID
       setSavedRecipes((prev) =>
@@ -626,7 +695,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       setSavedRecipes(prev);
-      console.error("Error unsaving recipe:", error);
+      notifyMutationError("remove saved recipe", error);
     }
   };
 
@@ -648,7 +717,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .eq("user_id", userId);
 
     if (error) {
+      // No optimistic revert for steps (low-risk); still surface the failure.
       console.error("Error updating recipe steps:", error);
+      Alert.alert("Something went wrong", "Could not save updated steps.", [{ text: "OK" }]);
     }
   };
 
@@ -657,7 +728,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const completeOnboarding = async () => {
     if (!userId) return;
     const onboardingKey = `@nomup_onboarding_${userId}`;
-    await AsyncStorage.setItem(onboardingKey, "true");
+    // Issue #10: Wrap write in try-catch; still update in-memory state even if
+    // persistence fails so the user can continue without being stuck on onboarding.
+    try {
+      await AsyncStorage.setItem(onboardingKey, "true");
+    } catch {
+      console.warn("Failed to persist onboarding state to AsyncStorage");
+    }
     setHasCompletedOnboarding(true);
   };
 

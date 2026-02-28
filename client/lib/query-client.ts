@@ -32,6 +32,24 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+/**
+ * Issue #16: Attempt a Supabase token refresh on 401 responses, then retry the
+ * original request once.  If the refresh fails, sign the user out so the app
+ * navigates back to the login screen cleanly (Supabase auth state change
+ * listener handles the navigation).
+ *
+ * @returns The refreshed access token, or undefined if refresh failed.
+ */
+async function refreshAndGetToken(): Promise<string | undefined> {
+  const { data, error } = await supabase.auth.refreshSession();
+  if (error || !data.session) {
+    // Refresh failed — sign out to force re-login.
+    await supabase.auth.signOut();
+    return undefined;
+  }
+  return data.session.access_token;
+}
+
 export async function apiRequest(
   method: string,
   route: string,
@@ -50,6 +68,23 @@ export async function apiRequest(
     headers,
     body: data ? JSON.stringify(data) : undefined,
   });
+
+  // Issue #16: Retry once after refreshing the session on 401.
+  if (res.status === 401) {
+    const newToken = await refreshAndGetToken();
+    if (!newToken) {
+      throw new Error("Session expired. Please sign in again.");
+    }
+    const retryHeaders: Record<string, string> = { ...headers };
+    retryHeaders["Authorization"] = `Bearer ${newToken}`;
+    const retryRes = await fetch(url, {
+      method,
+      headers: retryHeaders,
+      body: data ? JSON.stringify(data) : undefined,
+    });
+    await throwIfResNotOk(retryRes);
+    return retryRes;
+  }
 
   await throwIfResNotOk(res);
   return res;
@@ -70,8 +105,20 @@ export const getQueryFn: <T>(options: {
 
     const res = await fetch(url, { headers });
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+    // Issue #16: On 401, attempt token refresh and retry once before failing.
+    if (res.status === 401) {
+      if (unauthorizedBehavior === "returnNull") {
+        return null;
+      }
+      const newToken = await refreshAndGetToken();
+      if (!newToken) {
+        throw new Error("Session expired. Please sign in again.");
+      }
+      const retryHeaders: Record<string, string> = {};
+      retryHeaders["Authorization"] = `Bearer ${newToken}`;
+      const retryRes = await fetch(url, { headers: retryHeaders });
+      await throwIfResNotOk(retryRes);
+      return await retryRes.json();
     }
 
     await throwIfResNotOk(res);

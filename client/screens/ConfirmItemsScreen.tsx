@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, ActivityIndicator, Pressable } from "react-native";
+import { View, StyleSheet, ScrollView, ActivityIndicator, Pressable, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -62,15 +62,10 @@ export default function ConfirmItemsScreen({ route, navigation }: Props) {
       const data = await response.json();
       setItems(data.items || []);
     } catch (err) {
+      // Issue #15: Do NOT fall back to demo items — users would unknowingly add
+      // fake data to their pantry. Show an error and leave the list empty.
       console.error("Scan error:", err);
-      setError("Failed to scan receipt. Please try again.");
-      setItems([
-        { id: "1", name: "Organic Avocado", category: "Produce", price: 1.99, quantity: 3, expiresIn: 5, unit: "ct", unitAmount: 1 },
-        { id: "2", name: "Whole Almond Milk", category: "Dairy", price: 4.50, quantity: 1, expiresIn: 14, unit: "gal", unitAmount: 0.5 },
-        { id: "3", name: "Heirloom Tomatoes", category: "Produce", price: 5.20, quantity: 2, expiresIn: 7, unit: "lb", unitAmount: 1 },
-        { id: "4", name: "Greek Yogurt", category: "Dairy", price: 6.90, quantity: 1, expiresIn: 12, unit: "oz", unitAmount: 32 },
-        { id: "5", name: "Fresh Sourdough", category: "Bakery", price: 7.00, quantity: 1, expiresIn: 3, unit: "loaf", unitAmount: 1 },
-      ]);
+      setError("We couldn't read your receipt. Please try again or add items manually.");
     } finally {
       setIsLoading(false);
     }
@@ -166,14 +161,25 @@ export default function ConfirmItemsScreen({ route, navigation }: Props) {
       >
         <Animated.View entering={FadeInDown.delay(100)}>
           <View style={styles.header}>
-            <Badge label="SCAN SUCCESSFUL" variant="success" />
+            {/* Issue #15: Badge reflects actual scan outcome, not a hardcoded "success". */}
+            <Badge
+              label={error ? "SCAN FAILED" : "SCAN SUCCESSFUL"}
+              variant={error ? "expired" : "success"}
+            />
           </View>
           <ThemedText type="h1" style={styles.title}>
-            Confirm{"\n"}Scanned Groceries
+            {error ? "Scan Failed" : "Confirm\nScanned Groceries"}
           </ThemedText>
           <ThemedText type="body" style={[styles.subtitle, { color: theme.textSecondary }]}>
-            Review the items we detected from your receipt before adding to inventory.
+            {error
+              ? error
+              : "Review the items we detected from your receipt before adding to inventory."}
           </ThemedText>
+          {error ? (
+            <Pressable onPress={scanReceipt} style={styles.retryButton}>
+              <ThemedText type="bodyMedium">Try Again</ThemedText>
+            </Pressable>
+          ) : null}
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(200)} style={styles.itemsList}>
@@ -273,6 +279,15 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   subtitle: {
+    marginBottom: Spacing.xl,
+  },
+  retryButton: {
+    alignSelf: "flex-start",
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: Colors.light.text,
     marginBottom: Spacing.xl,
   },
   itemsList: {
