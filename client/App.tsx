@@ -21,8 +21,11 @@ export default function App() {
   const content = (
     <ErrorBoundary>
       <PostHogProvider
-        apiKey={process.env.EXPO_PUBLIC_POSTHOG_KEY ?? ""}
-        options={{ host: "https://app.posthog.com" }}
+        apiKey={process.env.EXPO_PUBLIC_POSTHOG_KEY || "placeholder"}
+        options={{
+          host: "https://app.posthog.com",
+          disabled: !process.env.EXPO_PUBLIC_POSTHOG_KEY,
+        }}
       >
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
