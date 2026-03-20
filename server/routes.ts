@@ -7,11 +7,7 @@ import { savedRecipes } from "@shared/schema";
 import { requireAuth } from "./middleware/requireAuth";
 
 const ai = new GoogleGenAI({
-  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
-  httpOptions: {
-    apiVersion: "",
-    baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL,
-  },
+  apiKey: process.env.GEMINI_API_KEY,
 });
 
 // Issue #1: Allow runtime override via env var so preview-model deprecations
@@ -417,7 +413,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
-  // Generate recipes from expiring ingredients using Gemini 3
+  // Generate recipes from expiring ingredients using Gemini
   app.post("/api/generate-recipe", requireAuth, async (req, res) => {
     try {
       const { expiringIngredients, maxCookingTime, pantryItems = [] } = req.body;
